@@ -445,18 +445,28 @@ export const useMesStore = create<MesStore>((set, get) => ({
         const localColisage = typeof localStorage !== 'undefined' ? localStorage.getItem(`of_colisage_${data.of_id}`) : null;
         const parsedOrderColisage = orderForColisage?.colisage ? parseInt(String(orderForColisage.colisage).replace(/[^0-9]/g, '')) : null;
         const piecesPerCarton = Math.max(1, Number(passedColisage) || Number(localColisage) || parsedOrderColisage || 36);
-        const articleId = orderForColisage?.article_id;
+        
+        let articleId = orderForColisage?.article_id;
+        if (!articleId && data.of_id) {
+          try {
+            const { data: ofData } = await (supabase as any)
+              .from('manufacturing_orders')
+              .select('article_id')
+              .eq('id', data.of_id)
+              .maybeSingle();
+            if (ofData?.article_id) articleId = ofData.article_id;
+          } catch {}
+        }
 
         // Try to find an incomplete carton for this OF
-        const { data: incompleteCartons, error: fetchIncompleteError } = await (supabase as any)
+        const { data: incompleteCartons } = await (supabase as any)
           .from('cartons')
           .select('*')
           .eq('of_id', data.of_id)
           .lt('quantity', piecesPerCarton)
+          .eq('status', 'Waiting')
           .order('created_at', { ascending: false })
           .limit(1);
-          
-        if (fetchIncompleteError) throw fetchIncompleteError;
 
         if (incompleteCartons && incompleteCartons.length > 0) {
           const incompleteCarton = incompleteCartons[0];
@@ -500,14 +510,35 @@ export const useMesStore = create<MesStore>((set, get) => ({
           const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
           const todayPrefix = `CARTON-${dateStr}-`;
           const todaysCartons = get().cartons.filter(c => c.carton_number?.startsWith(todayPrefix));
-          
+
+          // Fetch database cartons for today to guarantee unique sequential numbering
           let maxCounter = 0;
-          for (const c of todaysCartons) {
-            const num = parseInt(c.carton_number.split('-')[2] || '0', 10);
-            if (!isNaN(num) && num > maxCounter) {
-              maxCounter = num;
+          try {
+            const { data: recentDbCartons } = await (supabase as any)
+              .from('cartons')
+              .select('carton_number')
+              .like('carton_number', `${todayPrefix}%`)
+              .order('created_at', { ascending: false })
+              .limit(100);
+
+            const allTodayCartons = [...todaysCartons, ...(recentDbCartons || [])];
+            for (const c of allTodayCartons) {
+              const parts = (c.carton_number || '').split('-');
+              const num = parseInt(parts[parts.length - 1] || '0', 10);
+              if (!isNaN(num) && num > maxCounter) {
+                maxCounter = num;
+              }
+            }
+          } catch {
+            for (const c of todaysCartons) {
+              const parts = (c.carton_number || '').split('-');
+              const num = parseInt(parts[parts.length - 1] || '0', 10);
+              if (!isNaN(num) && num > maxCounter) {
+                maxCounter = num;
+              }
             }
           }
+
           let cartonCounter = maxCounter + 1;
           for (let i = 0; i < numberOfFullCartons; i++) {
             const cartonNumber = `CARTON-${dateStr}-${cartonCounter}`;
@@ -515,7 +546,7 @@ export const useMesStore = create<MesStore>((set, get) => ({
               organization_id: orgId,
               carton_number: cartonNumber,
               of_id: data.of_id,
-              article_id: articleId,
+              article_id: articleId || null,
               quantity: piecesPerCarton,
               operator_id: validOperatorId,
               qr_payload: { carton: cartonNumber, of: data.of_id, qty: piecesPerCarton },
@@ -530,7 +561,7 @@ export const useMesStore = create<MesStore>((set, get) => ({
               organization_id: orgId,
               carton_number: cartonNumber,
               of_id: data.of_id,
-              article_id: articleId,
+              article_id: articleId || null,
               quantity: remainder,
               operator_id: validOperatorId,
               qr_payload: { carton: cartonNumber, of: data.of_id, qty: remainder },

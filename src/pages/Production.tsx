@@ -84,8 +84,8 @@ export function Production() {
               ) : sessions.map(session => (
                 <tr 
                   key={session.id} 
-                  onClick={() => navigate(`/admin/cartons?start=${encodeURIComponent(session.start_time || '')}&end=${encodeURIComponent(session.end_time || '')}&operator=${encodeURIComponent(session.operator_id || '')}&article=${encodeURIComponent(session.article_id || '')}`)}
-                  className="hover:bg-gray-50 transition-colors cursor-pointer group"
+                  onClick={() => navigate(`/admin/cartons?start=${encodeURIComponent(session.start_time || '')}&end=${encodeURIComponent(session.end_time || '')}&operator=${encodeURIComponent(session.operator_id || '')}&article=${encodeURIComponent(session.article_id || '')}&session_id=${encodeURIComponent(session.id || '')}&of_id=${encodeURIComponent((session as any).of_id || '')}&lot=${encodeURIComponent(session.lot_number || '')}`)}
+                  className="hover:bg-blue-50/50 transition-colors cursor-pointer group"
                 >
                   <td className="p-4 font-medium text-gray-900">{session.lot_number || '-'}</td>
                   <td className="p-4 text-gray-900">

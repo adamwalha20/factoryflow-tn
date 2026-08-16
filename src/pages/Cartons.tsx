@@ -14,13 +14,18 @@ export function Cartons() {
   }, [fetchInitialData]);
 
   const [searchParams] = useSearchParams();
+  const sessionIdParam = searchParams.get('session_id');
+  const ofIdParam = searchParams.get('of_id');
+  const lotParam = searchParams.get('lot');
   const sessionStart = searchParams.get('start');
   const sessionEnd = searchParams.get('end');
   const sessionOperator = searchParams.get('operator');
   const sessionArticle = searchParams.get('article');
 
+  const hasFilter = Boolean(sessionIdParam || ofIdParam || lotParam || sessionStart);
+
   useEffect(() => {
-    if (cartons.length > 0 && sessionStart) {
+    if (cartons.length > 0 && hasFilter) {
       const timer = setTimeout(() => {
         const highlightedRows = document.querySelectorAll('.highlighted-carton');
         if (highlightedRows.length > 0) {
@@ -29,24 +34,37 @@ export function Cartons() {
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [cartons, sessionStart]);
+  }, [cartons, hasFilter]);
 
   const isCartonInSession = (carton: any) => {
-    if (!sessionStart || !sessionArticle) return false;
-    
-    const cartonDate = new Date(carton.created_at).getTime();
-    const start = new Date(sessionStart).getTime();
-    // If there is no end date, it means the session is still ongoing
-    const end = sessionEnd ? new Date(sessionEnd).getTime() : Date.now();
-    
-    const targetOperator = (sessionOperator === 'null' || sessionOperator === '') ? null : sessionOperator;
-    const operatorMatch = carton.operator_id === targetOperator || String(carton.operator_id) === sessionOperator;
-    
-    return operatorMatch && 
-           carton.article_id === sessionArticle && 
-           cartonDate >= start && 
-           cartonDate <= end &&
-           carton.status !== 'Waiting';
+    if (!hasFilter) return false;
+
+    // 1. Match by session_id
+    if (sessionIdParam && carton.session_id && carton.session_id === sessionIdParam) return true;
+
+    // 2. Match by OF id
+    if (ofIdParam && carton.of_id === ofIdParam) return true;
+
+    // 3. Match by Lot / OF number
+    if (lotParam && carton.of_id) {
+      const order = orders.find(o => o.id === carton.of_id);
+      if (order && (order.of_number === lotParam || lotParam.includes(order.of_number))) return true;
+    }
+
+    // 4. Match by Time Window (with 15 min buffer)
+    if (sessionStart) {
+      const cartonDate = new Date(carton.created_at).getTime();
+      const start = new Date(sessionStart).getTime() - (15 * 60 * 1000);
+      const end = sessionEnd ? (new Date(sessionEnd).getTime() + (15 * 60 * 1000)) : (Date.now() + 120000);
+      
+      const timeMatch = cartonDate >= start && cartonDate <= end;
+      if (sessionArticle) {
+        return timeMatch && carton.article_id === sessionArticle;
+      }
+      return timeMatch;
+    }
+
+    return false;
   };
 
   const [deletingCartonId, setDeletingCartonId] = useState<string | null>(null);
@@ -166,9 +184,9 @@ export function Cartons() {
               return (
                 <tr 
                   key={carton.id} 
-                  className={`group transition-colors ${
+                  className={`group transition-all ${
                     highlighted 
-                      ? 'highlighted-carton bg-blue-50 border-l-4 border-blue-500 hover:bg-blue-100' 
+                      ? 'highlighted-carton bg-blue-50/90 border-l-4 border-blue-600 shadow-xs ring-1 ring-blue-500/30 hover:bg-blue-100' 
                       : 'hover:bg-gray-50'
                   }`}
                 >
