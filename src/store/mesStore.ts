@@ -344,6 +344,64 @@ export const useMesStore = create<MesStore>((set, get) => ({
     try {
       const orgId = getActiveOrgId();
       const { pieces_per_carton, carton_capacity, colisage, operator_ids, ...sanitizedEntryData } = data as any;
+
+      // Safely verify and resolve valid operator_id for foreign key constraints
+      let validOperatorId = sanitizedEntryData.operator_id;
+      if (validOperatorId) {
+        try {
+          const { data: empCheck } = await (supabase as any)
+            .from('employees')
+            .select('id')
+            .eq('id', validOperatorId)
+            .maybeSingle();
+
+          if (!empCheck) {
+            const { data: empByUser } = await (supabase as any)
+              .from('employees')
+              .select('id')
+              .eq('user_id', validOperatorId)
+              .maybeSingle();
+
+            if (empByUser) {
+              validOperatorId = empByUser.id;
+            } else {
+              // Create employee record for this user if missing
+              const { data: uData } = await (supabase as any)
+                .from('users')
+                .select('*')
+                .eq('id', validOperatorId)
+                .maybeSingle();
+
+              if (uData) {
+                const names = (uData.name || 'Opérateur').split(' ');
+                const { data: newEmp } = await (supabase as any)
+                  .from('employees')
+                  .insert([{
+                    id: validOperatorId,
+                    user_id: validOperatorId,
+                    organization_id: orgId,
+                    first_name: names[0] || 'Opérateur',
+                    last_name: names.slice(1).join(' ') || 'Atelier',
+                    email: uData.email,
+                    role: uData.role || 'Machine Operator',
+                    is_active: true
+                  }])
+                  .select('id')
+                  .maybeSingle();
+
+                if (newEmp) validOperatorId = newEmp.id;
+              } else {
+                validOperatorId = null;
+              }
+            }
+          }
+        } catch {
+          validOperatorId = null;
+        }
+      }
+
+      sanitizedEntryData.operator_id = validOperatorId;
+
       const { data: newEntry, error } = await (supabase as any)
         .from('production_entries')
         .insert([{ organization_id: orgId, ...sanitizedEntryData }])
@@ -409,25 +467,25 @@ export const useMesStore = create<MesStore>((set, get) => ({
             const now = new Date().toISOString();
             await (supabase as any)
               .from('cartons')
-              .update({ quantity: piecesPerCarton, status: 'Produced', created_at: now, operator_id: data.operator_id })
+              .update({ quantity: piecesPerCarton, status: 'Produced', created_at: now, operator_id: validOperatorId })
               .eq('id', incompleteCarton.id);
               
             piecesLeftToDistribute -= neededToFill;
             
             // Update local state
             set(state => ({
-              cartons: state.cartons.map(c => c.id === incompleteCarton.id ? { ...c, quantity: piecesPerCarton, status: 'Produced', created_at: now, operator_id: data.operator_id } : c)
+              cartons: state.cartons.map(c => c.id === incompleteCarton.id ? { ...c, quantity: piecesPerCarton, status: 'Produced', created_at: now, operator_id: validOperatorId } : c)
             }));
           } else {
             // Add what we have, but it won't be full
             await (supabase as any)
               .from('cartons')
-              .update({ quantity: incompleteCarton.quantity + piecesLeftToDistribute, operator_id: data.operator_id })
+              .update({ quantity: incompleteCarton.quantity + piecesLeftToDistribute, operator_id: validOperatorId })
               .eq('id', incompleteCarton.id);
             
             // Update local state
             set(state => ({
-              cartons: state.cartons.map(c => c.id === incompleteCarton.id ? { ...c, quantity: incompleteCarton.quantity + piecesLeftToDistribute, operator_id: data.operator_id } : c)
+              cartons: state.cartons.map(c => c.id === incompleteCarton.id ? { ...c, quantity: incompleteCarton.quantity + piecesLeftToDistribute, operator_id: validOperatorId } : c)
             }));
             
             piecesLeftToDistribute = 0;
@@ -459,7 +517,7 @@ export const useMesStore = create<MesStore>((set, get) => ({
               of_id: data.of_id,
               article_id: articleId,
               quantity: piecesPerCarton,
-              operator_id: data.operator_id,
+              operator_id: validOperatorId,
               qr_payload: { carton: cartonNumber, of: data.of_id, qty: piecesPerCarton },
               status: 'Produced'
             });
@@ -474,7 +532,7 @@ export const useMesStore = create<MesStore>((set, get) => ({
               of_id: data.of_id,
               article_id: articleId,
               quantity: remainder,
-              operator_id: data.operator_id,
+              operator_id: validOperatorId,
               qr_payload: { carton: cartonNumber, of: data.of_id, qty: remainder },
               status: 'Waiting'
             });

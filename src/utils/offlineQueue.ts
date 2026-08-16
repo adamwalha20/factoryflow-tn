@@ -49,8 +49,23 @@ export const processOfflineSync = async (): Promise<{ synced: number; failed: nu
       if (item.type === 'PRODUCTION_ENTRY') {
         const { pieces_per_carton, carton_capacity, colisage, operator_ids, ...sanitized } = item.payload || {};
         const orgId = sanitized.organization_id || (typeof localStorage !== 'undefined' ? localStorage.getItem('active_org_id') : null) || '00000000-0000-0000-0000-000000000000';
+        
+        let validOpId = sanitized.operator_id;
+        if (validOpId) {
+          try {
+            const { data: empCheck } = await (supabase as any).from('employees').select('id').eq('id', validOpId).maybeSingle();
+            if (!empCheck) {
+              const { data: empByUser } = await (supabase as any).from('employees').select('id').eq('user_id', validOpId).maybeSingle();
+              validOpId = empByUser?.id || null;
+            }
+          } catch {
+            validOpId = null;
+          }
+        }
+
         const payloadToInsert = {
           ...sanitized,
+          operator_id: validOpId,
           organization_id: orgId
         };
         const { error } = await (supabase as any).from('production_entries').insert([payloadToInsert]);
