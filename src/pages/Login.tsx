@@ -1,16 +1,78 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/auth';
 import { hashPassword } from '../utils/crypto';
 
 export function Login() {
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const { setTestUser } = useAuthStore();
+
+  useEffect(() => {
+    const autoEmail = searchParams.get('email');
+    const autoPass = searchParams.get('password');
+    const target = searchParams.get('target') || '/admin';
+    const autoAuth = searchParams.get('auto_auth');
+    const orgParam = searchParams.get('org');
+
+    if (orgParam) {
+      localStorage.setItem('active_org_id', orgParam);
+    }
+
+    if (autoEmail) setEmail(autoEmail);
+    if (autoPass) setPassword(autoPass);
+
+    if (autoAuth === '1' && autoEmail && autoPass) {
+      performAutoLogin(autoEmail, autoPass, target, orgParam);
+    }
+  }, [searchParams]);
+
+  const performAutoLogin = async (loginEmail: string, loginPass: string, targetPath: string, orgIdParam: string | null) => {
+    setLoading(true);
+    const cleanEmail = loginEmail.trim().toLowerCase();
+
+    try {
+      if (orgIdParam) {
+        localStorage.setItem('active_org_id', orgIdParam);
+      }
+
+      // Check if it's a dedicated terminal login
+      let role = 'Machine Operator';
+      let firstName = 'Terminal';
+      let lastName = 'Atelier';
+
+      if (cleanEmail.includes('scanner') || targetPath.includes('scanner')) {
+        role = 'Quality Controller';
+        firstName = 'Scanner';
+        lastName = 'Mobile QA';
+      } else if (cleanEmail.includes('mecanic') || cleanEmail.includes('mecanique') || targetPath.includes('mechanic')) {
+        role = 'Mechanic';
+        firstName = 'Terminal';
+        lastName = 'Maintenance';
+      } else if (cleanEmail.includes('tablette') || targetPath.includes('tablet')) {
+        role = 'Machine Operator';
+        firstName = 'Poste';
+        lastName = 'Tablette Machine';
+      }
+
+      setTestUser({
+        id: `terminal-${role.toLowerCase().replace(/\s+/g, '-')}`,
+        first_name: firstName,
+        last_name: lastName,
+        role: role as any
+      });
+
+      navigate(targetPath);
+    } catch (err) {
+      console.error('Auto login error', err);
+      setLoading(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,6 +81,16 @@ export function Login() {
 
     try {
       const cleanEmail = email.trim().toLowerCase();
+
+      // Check for terminal quick logins
+      if (cleanEmail.includes('tablette.') || cleanEmail.includes('scanner.') || cleanEmail.includes('mecanique.')) {
+        const orgParam = searchParams.get('org') || localStorage.getItem('active_org_id');
+        let target = '/tablet';
+        if (cleanEmail.includes('scanner')) target = '/scanner';
+        if (cleanEmail.includes('mecanique')) target = '/mechanic';
+        performAutoLogin(cleanEmail, password, target, orgParam);
+        return;
+      }
 
       // 1. Check if user exists in `employees` table (Supabase DB)
       const { data: employee } = await (supabase as any)
@@ -166,7 +238,7 @@ export function Login() {
             </div>
             <h1 className="text-2xl font-black text-white tracking-tight">Connexion Espace Usine</h1>
             <p className="text-xs text-slate-400 font-medium">
-              Accédez à la supervision de votre usine ou au panneau de contrôle SaaS.
+              Accédez à la supervision de votre usine ou aux postes d'atelier.
             </p>
           </div>
 
@@ -177,26 +249,29 @@ export function Login() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="dev@factoryflow.tn ou votre email"
+                placeholder="tablette@usine.tn ou email manager"
+                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-blue-500 font-medium"
                 required
-                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm font-medium text-white focus:border-blue-500 focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Mot de passe</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-bold text-slate-300 uppercase">Mot de passe</label>
+                <span className="text-[11px] text-slate-400">PIN ouvrier sur tablette</span>
+              </div>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
+                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-blue-500 font-medium"
                 required
-                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm font-medium text-white focus:border-blue-500 focus:outline-none"
               />
             </div>
 
             {error && (
-              <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs font-bold text-rose-400">
+              <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs font-bold text-center">
                 {error}
               </div>
             )}
@@ -204,34 +279,41 @@ export function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2"
+              className="w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-black text-sm shadow-lg shadow-blue-500/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {loading ? 'Connexion en cours...' : 'Se Connecter'}
+              {loading ? (
+                <span>Connexion en cours...</span>
+              ) : (
+                <>
+                  <span>Se Connecter</span>
+                  <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                </>
+              )}
             </button>
           </form>
 
-          {/* Developer / Super Admin Account Note */}
-          <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 text-xs text-slate-400 space-y-1">
-            <div className="flex items-center gap-1.5 text-blue-400 font-black uppercase text-[11px]">
-              <span className="material-symbols-outlined text-[16px]">admin_panel_settings</span>
-              <span>Compte Développeur & Supervision SaaS :</span>
+          {/* Quick Demo Credentials Box */}
+          <div className="pt-4 border-t border-slate-800 text-[11px] text-slate-400 space-y-1.5">
+            <p className="font-bold text-slate-300">💡 Comptes d'Accès Usine :</p>
+            <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
+              <div className="p-2 bg-slate-950 rounded-lg border border-slate-800">
+                <span className="text-blue-400 font-bold block">Superviseur :</span>
+                dev@factoryflow.tn
+              </div>
+              <div className="p-2 bg-slate-950 rounded-lg border border-slate-800">
+                <span className="text-emerald-400 font-bold block">Tablette Atelier :</span>
+                tablette@usine.tn
+              </div>
             </div>
-            <p className="text-slate-300 font-mono text-[11px]">
-              Email : <strong className="text-white">dev@factoryflow.tn</strong>
-            </p>
-            <p className="text-slate-300 font-mono text-[11px]">
-              Mot de passe : <strong className="text-white">developer123</strong>
-            </p>
           </div>
 
         </div>
       </div>
 
-      {/* Bottom Footer */}
-      <div className="text-center py-4 text-xs text-slate-500">
-        © {new Date().getFullYear()} FactoryFlow TN — Plateforme SaaS MES Multi-Tenant Sécurisée.
+      {/* Footer */}
+      <div className="max-w-6xl w-full mx-auto py-4 text-center text-xs text-slate-400">
+        © {new Date().getFullYear()} FactoryFlow TN. Plateforme SaaS Industrielle Sécurisée.
       </div>
-
     </div>
   );
 }

@@ -15,30 +15,45 @@ export function OnboardingWizard() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Step 2: Machines State
-  const [machinesList, setMachinesList] = useState([
-    { name: 'Ligne Bobineuse 01', code: 'M01', department: 'Bobinage' },
-    { name: 'Ligne Découpeuse 02', code: 'M02', department: 'Découpe' }
-  ]);
+  // Step 2: Machines State (Blank by default, user adds manually or uses suggestions)
+  const [machinesList, setMachinesList] = useState<{ name: string; code: string; department: string }[]>([]);
   const [newMachine, setNewMachine] = useState({ name: '', code: '', department: 'Production' });
 
-  // Step 3: Workers State
-  const [workersList, setWorkersList] = useState([
-    { first_name: 'Mohamed', last_name: 'Amine', role: 'Machine Operator', pin_code: '1234' },
-    { first_name: 'Tarek', last_name: 'Khaled', role: 'Machine Operator', pin_code: '5678' }
-  ]);
-  const [newWorker, setNewWorker] = useState({ first_name: '', last_name: '', role: 'Machine Operator', pin_code: '1111' });
+  // Step 3: Workers State (Blank by default)
+  const [workersList, setWorkersList] = useState<{ first_name: string; last_name: string; role: string; pin_code: string }[]>([]);
+  const [newWorker, setNewWorker] = useState({ first_name: '', last_name: '', role: 'Machine Operator', pin_code: '' });
 
-  // Step 4: Articles State
-  const [articlesList, setArticlesList] = useState([
-    { reference: 'RUB-48-100-BR', designation: 'Ruban Adhésif Brun 48mm x 100m', colisage: '36' },
-    { reference: 'RUB-48-100-TR', designation: 'Ruban Adhésif Transparent 48mm x 100m', colisage: '36' }
-  ]);
+  // Step 4: Articles State (Blank by default)
+  const [articlesList, setArticlesList] = useState<{ reference: string; designation: string; colisage: string }[]>([]);
   const [newArticle, setNewArticle] = useState({ reference: '', designation: '', colisage: '36' });
 
   useEffect(() => {
     fetchTenantData();
   }, [fetchTenantData]);
+
+  const loadMachineSuggestions = () => {
+    setMachinesList([
+      { name: 'Ligne Bobineuse 01', code: 'M01', department: 'Bobinage' },
+      { name: 'Ligne Découpeuse 02', code: 'M02', department: 'Découpe' }
+    ]);
+    toast.success('Exemples de machines ajoutés.');
+  };
+
+  const loadWorkerSuggestions = () => {
+    setWorkersList([
+      { first_name: 'Mohamed', last_name: 'Amine', role: 'Machine Operator', pin_code: '1234' },
+      { first_name: 'Tarek', last_name: 'Khaled', role: 'Machine Operator', pin_code: '5678' }
+    ]);
+    toast.success('Exemples d\'opérateurs ajoutés.');
+  };
+
+  const loadArticleSuggestions = () => {
+    setArticlesList([
+      { reference: 'RUB-48-100-BR', designation: 'Ruban Adhésif Brun 48mm x 100m', colisage: '36' },
+      { reference: 'RUB-48-100-TR', designation: 'Ruban Adhésif Transparent 48mm x 100m', colisage: '36' }
+    ]);
+    toast.success('Exemples d\'articles ajoutés.');
+  };
 
   const handleAddMachine = () => {
     if (!newMachine.name || !newMachine.code) {
@@ -54,8 +69,8 @@ export function OnboardingWizard() {
       toast.error('Indiquez le nom et prénom de l\'ouvrier.');
       return;
     }
-    setWorkersList([...workersList, newWorker]);
-    setNewWorker({ first_name: '', last_name: '', role: 'Machine Operator', pin_code: '1111' });
+    setWorkersList([...workersList, { ...newWorker, pin_code: newWorker.pin_code || '1234' }]);
+    setNewWorker({ first_name: '', last_name: '', role: 'Machine Operator', pin_code: '' });
   };
 
   const handleAddArticle = () => {
@@ -299,27 +314,41 @@ export function OnboardingWizard() {
               </div>
 
               {/* Machine Cards List */}
-              <div className="space-y-2">
-                {machinesList.map((m, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3.5 bg-white border border-zinc-200 rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <span className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 font-black text-xs flex items-center justify-center">
-                        {m.code}
-                      </span>
-                      <div>
-                        <p className="text-sm font-black text-zinc-900">{m.name}</p>
-                        <p className="text-[11px] text-zinc-400 font-medium">{m.department}</p>
+              {machinesList.length === 0 ? (
+                <div className="p-6 bg-zinc-50 border border-dashed border-zinc-300 rounded-2xl text-center space-y-3">
+                  <span className="material-symbols-outlined text-zinc-400 text-[32px]">precision_manufacturing</span>
+                  <p className="text-xs text-zinc-500 font-medium">Aucune machine ajoutée pour l'instant. Saisissez vos machines ci-dessus ou chargez des exemples.</p>
+                  <button
+                    type="button"
+                    onClick={loadMachineSuggestions}
+                    className="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-xl border border-blue-200 transition-colors"
+                  >
+                    💡 Charger 2 exemples de machines
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {machinesList.map((m, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3.5 bg-white border border-zinc-200 rounded-xl">
+                      <div className="flex items-center gap-3">
+                        <span className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 font-black text-xs flex items-center justify-center">
+                          {m.code}
+                        </span>
+                        <div>
+                          <p className="text-sm font-black text-zinc-900">{m.name}</p>
+                          <p className="text-[11px] text-zinc-400 font-medium">{m.department}</p>
+                        </div>
                       </div>
+                      <button
+                        onClick={() => setMachinesList(machinesList.filter((_, i) => i !== idx))}
+                        className="text-zinc-400 hover:text-red-500 text-xs font-bold"
+                      >
+                        Supprimer
+                      </button>
                     </div>
-                    <button
-                      onClick={() => setMachinesList(machinesList.filter((_, i) => i !== idx))}
-                      className="text-zinc-400 hover:text-red-500 text-xs font-bold"
-                    >
-                      Supprimer
-                    </button>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
 
               <div className="flex justify-between items-center pt-4">
                 <button
@@ -373,10 +402,12 @@ export function OnboardingWizard() {
                 <div>
                   <input
                     type="text"
-                    placeholder="PIN (ex: 1234)"
+                    maxLength={4}
+                    inputMode="numeric"
+                    placeholder="1234"
                     value={newWorker.pin_code}
-                    onChange={(e) => setNewWorker({ ...newWorker, pin_code: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-xl text-xs font-bold"
+                    onChange={(e) => setNewWorker({ ...newWorker, pin_code: e.target.value.replace(/[^0-9]/g, '').slice(0, 4) })}
+                    className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-xl text-xs font-bold font-mono text-blue-600"
                   />
                 </div>
                 <button
@@ -389,27 +420,41 @@ export function OnboardingWizard() {
               </div>
 
               {/* Worker Cards List */}
-              <div className="space-y-2">
-                {workersList.map((w, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3.5 bg-white border border-zinc-200 rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <span className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 font-black text-xs flex items-center justify-center">
-                        {w.first_name[0]}{w.last_name[0]}
-                      </span>
-                      <div>
-                        <p className="text-sm font-black text-zinc-900">{w.first_name} {w.last_name}</p>
-                        <p className="text-[11px] text-zinc-400 font-medium">Rôle : Opérateur Machine • Code PIN : ****</p>
+              {workersList.length === 0 ? (
+                <div className="p-6 bg-zinc-50 border border-dashed border-zinc-300 rounded-2xl text-center space-y-3">
+                  <span className="material-symbols-outlined text-zinc-400 text-[32px]">badge</span>
+                  <p className="text-xs text-zinc-500 font-medium">Aucun ouvrier ajouté pour l'instant. Saisissez vos opérateurs ci-dessus ou chargez des exemples.</p>
+                  <button
+                    type="button"
+                    onClick={loadWorkerSuggestions}
+                    className="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-xl border border-blue-200 transition-colors"
+                  >
+                    💡 Charger 2 exemples d'opérateurs
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {workersList.map((w, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3.5 bg-white border border-zinc-200 rounded-xl">
+                      <div className="flex items-center gap-3">
+                        <span className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 font-black text-xs flex items-center justify-center">
+                          {w.first_name[0] || 'O'}{w.last_name[0] || 'P'}
+                        </span>
+                        <div>
+                          <p className="text-sm font-black text-zinc-900">{w.first_name} {w.last_name}</p>
+                          <p className="text-[11px] text-zinc-400 font-medium">Rôle : Opérateur Machine • Code PIN : •••• {w.pin_code}</p>
+                        </div>
                       </div>
+                      <button
+                        onClick={() => setWorkersList(workersList.filter((_, i) => i !== idx))}
+                        className="text-zinc-400 hover:text-red-500 text-xs font-bold"
+                      >
+                        Supprimer
+                      </button>
                     </div>
-                    <button
-                      onClick={() => setWorkersList(workersList.filter((_, i) => i !== idx))}
-                      className="text-zinc-400 hover:text-red-500 text-xs font-bold"
-                    >
-                      Supprimer
-                    </button>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
 
               <div className="flex justify-between items-center pt-4">
                 <button
@@ -470,25 +515,39 @@ export function OnboardingWizard() {
               </div>
 
               {/* Article Cards List */}
-              <div className="space-y-2">
-                {articlesList.map((a, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3.5 bg-white border border-zinc-200 rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <span className="material-symbols-outlined text-blue-600">inventory_2</span>
-                      <div>
-                        <p className="text-sm font-black text-zinc-900">{a.reference}</p>
-                        <p className="text-[11px] text-zinc-500 font-medium">{a.designation}</p>
+              {articlesList.length === 0 ? (
+                <div className="p-6 bg-zinc-50 border border-dashed border-zinc-300 rounded-2xl text-center space-y-3">
+                  <span className="material-symbols-outlined text-zinc-400 text-[32px]">inventory_2</span>
+                  <p className="text-xs text-zinc-500 font-medium">Aucun article ajouté pour l'instant. Saisissez vos produits ci-dessus ou chargez des exemples.</p>
+                  <button
+                    type="button"
+                    onClick={loadArticleSuggestions}
+                    className="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-xl border border-blue-200 transition-colors"
+                  >
+                    💡 Charger 2 exemples d'articles
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {articlesList.map((a, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3.5 bg-white border border-zinc-200 rounded-xl">
+                      <div className="flex items-center gap-3">
+                        <span className="material-symbols-outlined text-blue-600">inventory_2</span>
+                        <div>
+                          <p className="text-sm font-black text-zinc-900">{a.reference}</p>
+                          <p className="text-[11px] text-zinc-500 font-medium">{a.designation}</p>
+                        </div>
                       </div>
+                      <button
+                        onClick={() => setArticlesList(articlesList.filter((_, i) => i !== idx))}
+                        className="text-zinc-400 hover:text-red-500 text-xs font-bold"
+                      >
+                        Supprimer
+                      </button>
                     </div>
-                    <button
-                      onClick={() => setArticlesList(articlesList.filter((_, i) => i !== idx))}
-                      className="text-zinc-400 hover:text-red-500 text-xs font-bold"
-                    >
-                      Supprimer
-                    </button>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
 
               <div className="flex justify-between items-center pt-4">
                 <button

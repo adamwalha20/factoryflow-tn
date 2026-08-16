@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MarketingNavbar } from '../../components/marketing/Navbar';
 import { MarketingFooter } from '../../components/marketing/Footer';
+import { useThemeStore } from '../../store/theme';
 
 export function LandingPage() {
+  const { theme } = useThemeStore();
   const [activeTab, setActiveTab] = useState<'tablet' | 'trs' | 'bom' | 'scanner'>('tablet');
   
   // Interactive Tablet Simulator State
