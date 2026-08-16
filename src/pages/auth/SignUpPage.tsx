@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useTenantStore } from '../../store/tenantStore';
 import { useAuthStore } from '../../store/auth';
+import { useThemeStore } from '../../store/theme';
 import toast from 'react-hot-toast';
 
 export function SignUpPage() {
@@ -10,6 +11,7 @@ export function SignUpPage() {
   const navigate = useNavigate();
   const { plans, fetchPlans } = useTenantStore();
   const { setTestUser } = useAuthStore();
+  const { theme, toggleTheme } = useThemeStore();
 
   const initialPlanSlug = searchParams.get('plan') || 'professional';
   const [selectedPlanSlug, setSelectedPlanSlug] = useState(initialPlanSlug);
@@ -52,11 +54,40 @@ export function SignUpPage() {
     fetchPlans();
   }, [fetchPlans]);
 
-  const selectedPlan = plans.find(p => p.slug === selectedPlanSlug) || {
-    name: selectedPlanSlug === 'starter' ? 'Starter' : selectedPlanSlug === 'enterprise' ? 'Entreprise' : 'Professionnel',
-    monthly_price: selectedPlanSlug === 'starter' ? 149 : selectedPlanSlug === 'enterprise' ? 599 : 299,
-    currency: 'TND'
-  };
+  const planOptions = [
+    {
+      slug: 'starter',
+      name: 'Starter',
+      price: 149,
+      badge: 'Atelier Débutant',
+      capacity: '1 Usine • Jusqu\'à 3 Machines',
+      workers: '10 Opérateurs • Tablettes tactiles',
+      popular: false,
+      color: 'blue'
+    },
+    {
+      slug: 'professional',
+      name: 'Professionnel',
+      price: 299,
+      badge: 'Recommandé Usines & PME',
+      capacity: '1 Usine • Jusqu\'à 10 Machines',
+      workers: '50 Opérateurs • Nomenclatures BOM',
+      popular: true,
+      color: 'indigo'
+    },
+    {
+      slug: 'enterprise',
+      name: 'Entreprise',
+      price: 599,
+      badge: 'Multi-Sites & IA',
+      capacity: 'Multi-Usines • Machines Illimitées',
+      workers: 'Opérateurs Illimités • ERP Sage & Odoo',
+      popular: false,
+      color: 'purple'
+    }
+  ];
+
+  const currentPlan = planOptions.find(p => p.slug === selectedPlanSlug) || planOptions[1];
 
   const handleStep1Next = (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,7 +104,6 @@ export function SignUpPage() {
       return;
     }
 
-    // Pre-populate factory contact with account details if empty
     setFactoryForm(prev => ({
       ...prev,
       email: prev.email || accountForm.email,
@@ -92,11 +122,9 @@ export function SignUpPage() {
 
     setIsLoading(true);
     try {
-      // 1. Generate Organization UUID
       const orgId = crypto.randomUUID();
       const orgSlug = factoryForm.company_name.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Math.floor(Math.random() * 1000);
 
-      // 2. Create Supabase Auth User or Local Auth Session
       let authUserId = crypto.randomUUID() as string;
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: accountForm.email,
@@ -114,11 +142,10 @@ export function SignUpPage() {
       if (authData?.user) {
         authUserId = authData.user.id as string;
       } else if (authError) {
-        console.warn('Supabase auth warning, proceeding with localized tenant provisioning', authError);
+        console.warn('Supabase auth notice', authError);
       }
 
-      // 3. Insert Organization in DB
-      const { data: orgData, error: orgError } = await (supabase as any)
+      await (supabase as any)
         .from('organizations')
         .insert([
           {
@@ -139,54 +166,26 @@ export function SignUpPage() {
             employee_count: factoryForm.employee_count,
             machine_count: factoryForm.machine_count,
             production_type: factoryForm.production_type,
-            timezone: 'Africa/Tunis',
-            default_language: 'fr',
+            timezone: factoryForm.timezone,
+            default_language: factoryForm.default_language,
             onboarding_completed: false,
             onboarding_step: 1
           }
-        ])
-        .select()
-        .single();
+        ]);
 
-      if (orgError) throw orgError;
-
-      // 4. Create Initial Factory for this Organization
-      await (supabase as any).from('factories').insert([
-        {
-          organization_id: orgId,
-          name: `Usine Principale (${factoryForm.city})`,
-          code: 'SITE-01',
-          location: factoryForm.city,
-          address: factoryForm.address
-        }
-      ]);
-
-      // 5. Create Owner Profile & User record
       await (supabase as any).from('users').insert([
         {
           id: authUserId,
           organization_id: orgId,
-          email: accountForm.email,
           name: `${accountForm.first_name} ${accountForm.last_name}`,
+          email: accountForm.email,
           role: 'Administrator',
-          phone: accountForm.phone,
-          status: 'Active'
+          status: 'Actif'
         }
       ]);
 
-      // 6. Create Organization Membership (Role = OWNER)
-      await (supabase as any).from('organization_members').insert([
-        {
-          organization_id: orgId,
-          user_id: authUserId,
-          role: 'OWNER',
-          status: 'ACTIVE'
-        }
-      ]);
-
-      // 7. Find Plan ID & Create 14-Day Trial Subscription
-      const matchedPlan = plans.find(p => p.slug === selectedPlanSlug);
-      const planId = matchedPlan?.id || null;
+      const planDb = plans.find(p => p.slug === selectedPlanSlug);
+      const planId = planDb?.id || '2';
 
       await (supabase as any).from('subscriptions').insert([
         {
@@ -200,7 +199,6 @@ export function SignUpPage() {
         }
       ]);
 
-      // 8. Set Active Tenant State in App
       localStorage.setItem('active_org_id', orgId);
       setTestUser({
         id: authUserId,
@@ -221,94 +219,189 @@ export function SignUpPage() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-50 flex flex-col justify-between font-sans">
+    <div className={`min-h-screen font-sans transition-colors duration-300 flex flex-col justify-between ${
+      theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'
+    }`}>
       
       {/* Top Bar */}
-      <header className="bg-white border-b border-zinc-200 px-4 py-4 sm:px-8 flex items-center justify-between">
+      <header className={`px-4 py-4 sm:px-8 flex items-center justify-between border-b transition-colors ${
+        theme === 'dark' ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200 shadow-xs'
+      }`}>
         <Link to="/" className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold shadow-md shadow-blue-600/20">
             <span className="material-symbols-outlined text-[22px]">precision_manufacturing</span>
           </div>
-          <span className="text-lg font-black text-zinc-900 tracking-tight">
-            FactoryFlow <span className="text-blue-600 font-extrabold text-xs">TN</span>
+          <span className={`text-lg font-black tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+            FactoryFlow <span className="text-blue-500 font-extrabold text-xs">TN</span>
           </span>
         </Link>
-        <div className="flex items-center gap-3 text-xs font-bold text-zinc-600">
-          <span>Déjà inscrit ?</span>
-          <Link to="/login" className="px-3.5 py-1.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-900 rounded-lg transition-colors">
-            Connexion
-          </Link>
+        
+        <div className="flex items-center gap-3">
+          <button
+            onClick={toggleTheme}
+            title={theme === 'dark' ? 'Mode Clair' : 'Mode Sombre'}
+            className={`p-2 rounded-xl border transition-all ${
+              theme === 'dark'
+                ? 'bg-slate-800 border-slate-700 text-amber-400 hover:bg-slate-700'
+                : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[18px]">
+              {theme === 'dark' ? 'light_mode' : 'dark_mode'}
+            </span>
+          </button>
+          <div className={`flex items-center gap-2 text-xs font-bold ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
+            <span className="hidden sm:inline">Déjà inscrit ?</span>
+            <Link
+              to="/login"
+              className={`px-3.5 py-1.5 rounded-xl font-bold transition-all ${
+                theme === 'dark'
+                  ? 'bg-slate-800 hover:bg-slate-700 text-white'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-900'
+              }`}
+            >
+              Connexion
+            </Link>
+          </div>
         </div>
       </header>
 
       {/* Main Container */}
-      <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-8 sm:py-12">
+      <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-8 sm:py-12 space-y-8">
         
-        {/* Plan Header Card */}
-        <div className="bg-white p-4 sm:p-6 rounded-2xl border border-zinc-200 shadow-xs mb-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600">
-              <span className="material-symbols-outlined text-[28px]">verified</span>
-            </div>
-            <div>
-              <p className="text-xs font-black text-blue-600 uppercase">Forfait Sélectionné :</p>
-              <h2 className="text-xl font-black text-zinc-900 flex items-center gap-2">
-                {selectedPlan.name}
-                <span className="text-xs px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-md font-bold">
-                  14 Jours Gratuits
-                </span>
-              </h2>
-            </div>
+        {/* BIG & VISIBLE PLAN SELECTION CARDS */}
+        <div className="space-y-4">
+          <div className="text-center space-y-1">
+            <span className="text-xs font-black text-blue-500 uppercase tracking-widest bg-blue-500/10 px-4 py-1 rounded-full border border-blue-500/20">
+              Étape 0 : Choisissez votre Forfait
+            </span>
+            <h1 className={`text-2xl sm:text-4xl font-black tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-950'}`}>
+              Sélectionnez votre Pack Usine (14 Jours Gratuits)
+            </h1>
+            <p className={`text-xs sm:text-sm font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
+              Aucun paiement requis aujourd'hui. Vous pouvez changer ou résilier votre forfait à tout moment.
+            </p>
           </div>
-          
-          <div className="flex items-center gap-4">
-            <div className="text-right">
-              <p className="text-2xl font-black text-zinc-900">{selectedPlan.monthly_price} <span className="text-xs font-bold text-zinc-500">{selectedPlan.currency || 'TND'} / mois</span></p>
-              <p className="text-[11px] text-zinc-400 font-medium">Facturé après les 14 jours d'essai</p>
-            </div>
-            <div className="flex bg-zinc-100 p-1 rounded-xl border border-zinc-200 text-xs font-bold">
-              {['starter', 'professional', 'enterprise'].map((slug) => (
-                <button
-                  key={slug}
-                  type="button"
-                  onClick={() => setSelectedPlanSlug(slug as any)}
-                  className={`px-2.5 py-1 rounded-lg capitalize transition-colors ${selectedPlanSlug === slug ? 'bg-white text-blue-700 shadow-xs font-black' : 'text-zinc-600'}`}
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+            {planOptions.map((plan) => {
+              const isSelected = selectedPlanSlug === plan.slug;
+              return (
+                <div
+                  key={plan.slug}
+                  onClick={() => setSelectedPlanSlug(plan.slug)}
+                  className={`cursor-pointer rounded-2xl p-5 sm:p-6 transition-all relative border-2 flex flex-col justify-between ${
+                    isSelected
+                      ? 'border-blue-500 ring-4 ring-blue-500/20 shadow-xl ' + (theme === 'dark' ? 'bg-slate-900' : 'bg-blue-50/50')
+                      : theme === 'dark'
+                        ? 'border-slate-800 bg-slate-900/50 hover:border-slate-700'
+                        : 'border-slate-200 bg-white hover:border-slate-300 shadow-xs'
+                  }`}
                 >
-                  {slug === 'professional' ? 'Pro' : slug}
-                </button>
-              ))}
-            </div>
+                  {plan.popular && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[10px] font-black uppercase tracking-wider px-3 py-0.5 rounded-full shadow-md">
+                      Le Plus Choisi en Tunisie 🇹🇳
+                    </div>
+                  )}
+
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-md ${
+                        isSelected
+                          ? 'bg-blue-600 text-white'
+                          : theme === 'dark' ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-700'
+                      }`}>
+                        {plan.badge}
+                      </span>
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-all ${
+                        isSelected
+                          ? 'bg-blue-600 border-blue-600 text-white'
+                          : 'border-slate-400/40 text-transparent'
+                      }`}>
+                        <span className="material-symbols-outlined text-[16px]">check</span>
+                      </div>
+                    </div>
+
+                    <h3 className={`text-xl font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                      Pack {plan.name}
+                    </h3>
+
+                    <div className="mt-3 pb-3 border-b border-slate-700/30 flex items-baseline gap-1">
+                      <span className={`text-3xl font-black font-mono ${theme === 'dark' ? 'text-white' : 'text-slate-950'}`}>
+                        {plan.price}
+                      </span>
+                      <span className="text-xs font-bold text-slate-400">TND / mois</span>
+                    </div>
+
+                    <div className="mt-3 space-y-1.5 text-xs font-medium">
+                      <p className={`flex items-center gap-2 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
+                        <span className="material-symbols-outlined text-blue-500 text-[16px]">precision_manufacturing</span>
+                        <span>{plan.capacity}</span>
+                      </p>
+                      <p className={`flex items-center gap-2 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
+                        <span className="material-symbols-outlined text-emerald-500 text-[16px]">group</span>
+                        <span>{plan.workers}</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-slate-700/20">
+                    <span className={`text-xs font-black block text-center py-2 rounded-xl transition-all ${
+                      isSelected
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : theme === 'dark' ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-700'
+                    }`}>
+                      {isSelected ? '✓ Pack Sélectionné' : 'Choisir ce Pack'}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
         {/* Step Indicator */}
-        <div className="flex items-center justify-center gap-3 mb-8">
-          <div className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black ${step === 1 ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' : 'bg-white text-zinc-600 border border-zinc-200'}`}>
+        <div className="flex items-center justify-center gap-3">
+          <div className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${
+            step === 1
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+              : theme === 'dark' ? 'bg-slate-900 text-slate-400 border border-slate-800' : 'bg-white text-slate-600 border border-slate-200'
+          }`}>
             <span>1</span>
             <span>Compte Administrateur</span>
           </div>
-          <span className="text-zinc-300">→</span>
-          <div className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black ${step === 2 ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' : 'bg-white text-zinc-600 border border-zinc-200'}`}>
+          <span className="text-slate-500">→</span>
+          <div className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${
+            step === 2
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+              : theme === 'dark' ? 'bg-slate-900 text-slate-400 border border-slate-800' : 'bg-white text-slate-600 border border-slate-200'
+          }`}>
             <span>2</span>
             <span>Profil de l'Usine</span>
           </div>
         </div>
 
-        {/* Forms */}
-        <div className="bg-white p-6 sm:p-10 rounded-3xl border-2 border-zinc-200 shadow-sm">
+        {/* Registration Form Container */}
+        <div className={`p-6 sm:p-10 rounded-3xl border transition-all ${
+          theme === 'dark'
+            ? 'bg-slate-900/90 border-slate-800 shadow-2xl backdrop-blur-xl'
+            : 'bg-white border-slate-200 shadow-xl'
+        }`}>
           
           {step === 1 ? (
             <form onSubmit={handleStep1Next} className="space-y-6">
               <div>
-                <h3 className="text-2xl font-black text-zinc-900">Créez votre compte Administrateur</h3>
-                <p className="text-xs sm:text-sm text-zinc-500 font-medium mt-1">
-                  Ce compte sera le propriétaire (OWNER) de l'espace usine avec tous les privilèges de gestion.
+                <h3 className={`text-2xl font-black ${theme === 'dark' ? 'text-white' : 'text-slate-950'}`}>
+                  1. Créez votre compte Administrateur
+                </h3>
+                <p className={`text-xs sm:text-sm font-medium mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Ce compte sera le propriétaire (OWNER) de l'espace usine avec tous les accès de supervision.
                 </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-zinc-700 uppercase mb-1.5">
+                  <label className={`block text-xs font-bold uppercase mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
                     Prénom <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -317,11 +410,13 @@ export function SignUpPage() {
                     placeholder="Ex: Mohamed"
                     value={accountForm.first_name}
                     onChange={(e) => setAccountForm({ ...accountForm, first_name: e.target.value })}
-                    className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl text-sm font-medium focus:bg-white focus:border-blue-600 focus:outline-none"
+                    className={`w-full px-4 py-3 rounded-xl text-sm font-medium border focus:outline-none focus:border-blue-500 transition-all ${
+                      theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                    }`}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-zinc-700 uppercase mb-1.5">
+                  <label className={`block text-xs font-bold uppercase mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
                     Nom <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -330,14 +425,16 @@ export function SignUpPage() {
                     placeholder="Ex: Ben Amor"
                     value={accountForm.last_name}
                     onChange={(e) => setAccountForm({ ...accountForm, last_name: e.target.value })}
-                    className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl text-sm font-medium focus:bg-white focus:border-blue-600 focus:outline-none"
+                    className={`w-full px-4 py-3 rounded-xl text-sm font-medium border focus:outline-none focus:border-blue-500 transition-all ${
+                      theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                    }`}
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-zinc-700 uppercase mb-1.5">
+                  <label className={`block text-xs font-bold uppercase mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
                     Email Professionnel <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -346,11 +443,13 @@ export function SignUpPage() {
                     placeholder="directeur@usine.tn"
                     value={accountForm.email}
                     onChange={(e) => setAccountForm({ ...accountForm, email: e.target.value })}
-                    className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl text-sm font-medium focus:bg-white focus:border-blue-600 focus:outline-none"
+                    className={`w-full px-4 py-3 rounded-xl text-sm font-medium border focus:outline-none focus:border-blue-500 transition-all ${
+                      theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                    }`}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-zinc-700 uppercase mb-1.5">
+                  <label className={`block text-xs font-bold uppercase mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
                     Téléphone Direct
                   </label>
                   <input
@@ -358,14 +457,16 @@ export function SignUpPage() {
                     placeholder="+216 98 000 000"
                     value={accountForm.phone}
                     onChange={(e) => setAccountForm({ ...accountForm, phone: e.target.value })}
-                    className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl text-sm font-medium focus:bg-white focus:border-blue-600 focus:outline-none"
+                    className={`w-full px-4 py-3 rounded-xl text-sm font-medium border focus:outline-none focus:border-blue-500 transition-all ${
+                      theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                    }`}
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-zinc-700 uppercase mb-1.5">
+                  <label className={`block text-xs font-bold uppercase mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
                     Mot de passe <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -374,11 +475,13 @@ export function SignUpPage() {
                     placeholder="••••••••"
                     value={accountForm.password}
                     onChange={(e) => setAccountForm({ ...accountForm, password: e.target.value })}
-                    className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl text-sm font-medium focus:bg-white focus:border-blue-600 focus:outline-none"
+                    className={`w-full px-4 py-3 rounded-xl text-sm font-medium border focus:outline-none focus:border-blue-500 transition-all ${
+                      theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                    }`}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-zinc-700 uppercase mb-1.5">
+                  <label className={`block text-xs font-bold uppercase mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
                     Confirmer le mot de passe <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -387,14 +490,16 @@ export function SignUpPage() {
                     placeholder="••••••••"
                     value={accountForm.confirm_password}
                     onChange={(e) => setAccountForm({ ...accountForm, confirm_password: e.target.value })}
-                    className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl text-sm font-medium focus:bg-white focus:border-blue-600 focus:outline-none"
+                    className={`w-full px-4 py-3 rounded-xl text-sm font-medium border focus:outline-none focus:border-blue-500 transition-all ${
+                      theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                    }`}
                   />
                 </div>
               </div>
 
               <button
                 type="submit"
-                className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-black text-sm rounded-xl shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2"
+                className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-sm rounded-xl shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2"
               >
                 <span>Continuer vers les Informations de l'Usine</span>
                 <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
@@ -403,15 +508,17 @@ export function SignUpPage() {
           ) : (
             <form onSubmit={handleFinalSubmit} className="space-y-6">
               <div>
-                <h3 className="text-2xl font-black text-zinc-900">Informations sur votre Usine</h3>
-                <p className="text-xs sm:text-sm text-zinc-500 font-medium mt-1">
-                  Ces informations permettent de paramétrer votre tenant d'entreprise et vos rapports industriels.
+                <h3 className={`text-2xl font-black ${theme === 'dark' ? 'text-white' : 'text-slate-950'}`}>
+                  2. Informations sur votre Usine ({currentPlan.name})
+                </h3>
+                <p className={`text-xs sm:text-sm font-medium mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Ces informations permettent de configurer votre tenant d'entreprise et vos indicateurs TRS.
                 </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-zinc-700 uppercase mb-1.5">
+                  <label className={`block text-xs font-bold uppercase mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
                     Nom Commercial de l'Usine <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -420,11 +527,13 @@ export function SignUpPage() {
                     placeholder="Ex: Plastique Moderne Tunisie"
                     value={factoryForm.company_name}
                     onChange={(e) => setFactoryForm({ ...factoryForm, company_name: e.target.value })}
-                    className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl text-sm font-medium focus:bg-white focus:border-blue-600 focus:outline-none"
+                    className={`w-full px-4 py-3 rounded-xl text-sm font-medium border focus:outline-none focus:border-blue-500 transition-all ${
+                      theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                    }`}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-zinc-700 uppercase mb-1.5">
+                  <label className={`block text-xs font-bold uppercase mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
                     Raison Sociale / Société Légale
                   </label>
                   <input
@@ -432,20 +541,24 @@ export function SignUpPage() {
                     placeholder="Ex: Société PMT SARL"
                     value={factoryForm.legal_name}
                     onChange={(e) => setFactoryForm({ ...factoryForm, legal_name: e.target.value })}
-                    className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl text-sm font-medium focus:bg-white focus:border-blue-600 focus:outline-none"
+                    className={`w-full px-4 py-3 rounded-xl text-sm font-medium border focus:outline-none focus:border-blue-500 transition-all ${
+                      theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                    }`}
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-zinc-700 uppercase mb-1.5">
+                  <label className={`block text-xs font-bold uppercase mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
                     Secteur d'Activité
                   </label>
                   <select
                     value={factoryForm.industry}
                     onChange={(e) => setFactoryForm({ ...factoryForm, industry: e.target.value })}
-                    className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl text-sm font-medium focus:bg-white focus:border-blue-600 focus:outline-none"
+                    className={`w-full px-4 py-3 rounded-xl text-sm font-medium border focus:outline-none focus:border-blue-500 transition-all ${
+                      theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                    }`}
                   >
                     <option value="Emballage & Conditionnement">Emballage & Conditionnement</option>
                     <option value="Plasturgie & Injection">Plasturgie & Injection</option>
@@ -458,7 +571,7 @@ export function SignUpPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-zinc-700 uppercase mb-1.5">
+                  <label className={`block text-xs font-bold uppercase mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
                     Matricule Fiscal (Optionnel)
                   </label>
                   <input
@@ -466,18 +579,22 @@ export function SignUpPage() {
                     placeholder="1234567/A/M/000"
                     value={factoryForm.tax_id}
                     onChange={(e) => setFactoryForm({ ...factoryForm, tax_id: e.target.value })}
-                    className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl text-sm font-medium focus:bg-white focus:border-blue-600 focus:outline-none"
+                    className={`w-full px-4 py-3 rounded-xl text-sm font-medium border focus:outline-none focus:border-blue-500 transition-all ${
+                      theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                    }`}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-zinc-700 uppercase mb-1.5">
+                  <label className={`block text-xs font-bold uppercase mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
                     Gouvernorat (Tunisie)
                   </label>
                   <select
                     value={factoryForm.governorate}
                     onChange={(e) => setFactoryForm({ ...factoryForm, governorate: e.target.value, city: e.target.value })}
-                    className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl text-sm font-medium focus:bg-white focus:border-blue-600 focus:outline-none"
+                    className={`w-full px-4 py-3 rounded-xl text-sm font-medium border focus:outline-none focus:border-blue-500 transition-all ${
+                      theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                    }`}
                   >
                     {['Tunis', 'Ben Arous', 'Ariana', 'Manouba', 'Nabeul', 'Bizerte', 'Sousse', 'Monastir', 'Sfax', 'Kairouan', 'Gabès', 'Béja', 'Jendouba', 'Autre'].map(g => (
                       <option key={g} value={g}>{g}</option>
@@ -488,7 +605,7 @@ export function SignUpPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-zinc-700 uppercase mb-1.5">
+                  <label className={`block text-xs font-bold uppercase mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
                     Adresse / Zone Industrielle
                   </label>
                   <input
@@ -496,11 +613,13 @@ export function SignUpPage() {
                     placeholder="Ex: Z.I. Mghira 2, Lot 45"
                     value={factoryForm.address}
                     onChange={(e) => setFactoryForm({ ...factoryForm, address: e.target.value })}
-                    className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl text-sm font-medium focus:bg-white focus:border-blue-600 focus:outline-none"
+                    className={`w-full px-4 py-3 rounded-xl text-sm font-medium border focus:outline-none focus:border-blue-500 transition-all ${
+                      theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                    }`}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-zinc-700 uppercase mb-1.5">
+                  <label className={`block text-xs font-bold uppercase mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
                     Nombre de Machines Estimé
                   </label>
                   <input
@@ -508,7 +627,9 @@ export function SignUpPage() {
                     min="1"
                     value={factoryForm.machine_count}
                     onChange={(e) => setFactoryForm({ ...factoryForm, machine_count: parseInt(e.target.value) || 1 })}
-                    className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl text-sm font-medium focus:bg-white focus:border-blue-600 focus:outline-none"
+                    className={`w-full px-4 py-3 rounded-xl text-sm font-medium border focus:outline-none focus:border-blue-500 transition-all ${
+                      theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                    }`}
                   />
                 </div>
               </div>
@@ -517,14 +638,18 @@ export function SignUpPage() {
                 <button
                   type="button"
                   onClick={() => setStep(1)}
-                  className="px-6 py-4 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-bold text-sm rounded-xl transition-colors"
+                  className={`px-6 py-4 rounded-xl font-bold text-sm transition-colors ${
+                    theme === 'dark'
+                      ? 'bg-slate-800 hover:bg-slate-700 text-white'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
                 >
                   ← Retour
                 </button>
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="flex-1 py-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-black text-sm rounded-xl shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2"
+                  className="flex-1 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white font-black text-sm rounded-xl shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2"
                 >
                   {isLoading ? (
                     <span>Création du Tenant Usine en cours...</span>
@@ -543,7 +668,9 @@ export function SignUpPage() {
       </main>
 
       {/* Footer */}
-      <footer className="text-center py-6 text-xs text-zinc-400 border-t border-zinc-200">
+      <footer className={`text-center py-6 text-xs border-t transition-colors ${
+        theme === 'dark' ? 'border-slate-800 text-slate-500' : 'border-slate-200 text-slate-400'
+      }`}>
         © {new Date().getFullYear()} FactoryFlow TN — Sécurisé par Supabase & PostgreSQL Multi-Tenant.
       </footer>
     </div>

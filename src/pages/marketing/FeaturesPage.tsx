@@ -2,8 +2,11 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { MarketingNavbar } from '../../components/marketing/Navbar';
 import { MarketingFooter } from '../../components/marketing/Footer';
+import { useThemeStore } from '../../store/theme';
 
 export function FeaturesPage() {
+  const { theme } = useThemeStore();
+
   const sections = [
     {
       id: 'atelier',
@@ -70,112 +73,98 @@ export function FeaturesPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-blue-600 selection:text-white">
+    <div className={`min-h-screen font-sans transition-colors duration-300 ${
+      theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'
+    }`}>
       <MarketingNavbar />
 
       {/* Header */}
       <section className="pt-16 pb-12 text-center relative overflow-hidden">
         <div className="max-w-4xl mx-auto px-4 relative z-10 space-y-4">
-          <span className="text-xs font-black text-blue-400 uppercase tracking-widest bg-blue-500/10 px-4 py-1.5 rounded-full border border-blue-500/30">
+          <span className="text-xs font-black text-blue-500 uppercase tracking-widest bg-blue-500/10 px-4 py-1.5 rounded-full border border-blue-500/30">
             Plateforme Industrielle Complète
           </span>
-          <h1 className="text-4xl sm:text-6xl font-black text-white tracking-tight">
+          <h1 className={`text-4xl sm:text-6xl font-black tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-950'}`}>
             Des Outils Pensés pour le Terrain
           </h1>
-          <p className="text-slate-300 text-base sm:text-lg max-w-2xl mx-auto font-medium">
+          <p className={`text-base sm:text-lg max-w-2xl mx-auto font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
             Du pupitre de l'opérateur jusqu'au bureau du directeur d'usine : découvrez comment chaque module s'articule pour maximiser votre rendement.
           </p>
         </div>
       </section>
 
       {/* Feature Deep Dives with Alternating Image Layouts */}
-      <section className="py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-20">
+      <section className="py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
         {sections.map((section, index) => (
           <div
             key={section.id}
-            className={`grid grid-cols-1 lg:grid-cols-12 gap-12 items-center p-8 sm:p-12 rounded-3xl bg-slate-900/60 border border-slate-800 backdrop-blur-xl ${
-              index % 2 === 1 ? 'lg:flex-row-reverse' : ''
+            className={`grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center p-6 sm:p-10 rounded-3xl border transition-all ${
+              theme === 'dark'
+                ? 'bg-slate-900/60 border-slate-800 backdrop-blur-xl'
+                : 'bg-white border-slate-200 shadow-md'
             }`}
           >
             {/* Image / Visual Column */}
             <div className={`lg:col-span-6 ${index % 2 === 1 ? 'lg:order-2' : 'lg:order-1'}`}>
-              <div className="rounded-2xl overflow-hidden border border-slate-700/80 shadow-2xl aspect-[16/10] bg-slate-950 relative group">
+              <div className={`rounded-2xl overflow-hidden border shadow-xl aspect-[16/10] group relative ${
+                theme === 'dark' ? 'border-slate-800 bg-slate-950' : 'border-slate-200 bg-slate-100'
+              }`}>
                 <img
                   src={section.image}
                   alt={section.title}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent"></div>
-                <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between p-3 rounded-xl bg-slate-900/90 backdrop-blur-md border border-slate-800">
-                  <span className="text-xs font-bold text-slate-300 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                    Module Actif en Temps Réel
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent"></div>
+                <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-white text-xs font-bold">
+                  <span className="px-3 py-1 bg-slate-900/90 rounded-lg backdrop-blur-md border border-white/10">
+                    {section.badge}
                   </span>
-                  <span className="text-[10px] font-black uppercase text-blue-400">{section.badge}</span>
+                  <span className="text-emerald-400 font-mono">100% Temps Réel</span>
                 </div>
               </div>
             </div>
 
-            {/* Content Column */}
+            {/* Text & Points Column */}
             <div className={`lg:col-span-6 space-y-6 ${index % 2 === 1 ? 'lg:order-1' : 'lg:order-2'}`}>
-              <div className="flex items-center gap-3">
-                <div className={`w-12 h-12 rounded-2xl bg-gradient-to-tr ${section.color} flex items-center justify-center text-white shadow-lg`}>
-                  <span className="material-symbols-outlined text-[26px]">{section.icon}</span>
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/10 text-blue-500 border border-blue-500/20 rounded-lg text-xs font-black uppercase tracking-wider">
+                  <span className="material-symbols-outlined text-[16px]">{section.icon}</span>
+                  <span>{section.badge}</span>
                 </div>
-                <span className="text-xs font-black uppercase tracking-wider px-3 py-1 rounded-full bg-slate-800 text-blue-400 border border-slate-700">
-                  {section.badge}
-                </span>
+                <h2 className={`text-2xl sm:text-3xl font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                  {section.title}
+                </h2>
+                <p className={`text-sm sm:text-base leading-relaxed ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
+                  {section.description}
+                </p>
               </div>
 
-              <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                {section.title}
-              </h2>
-
-              <p className="text-slate-300 text-sm sm:text-base leading-relaxed">
-                {section.description}
-              </p>
-
-              <ul className="space-y-3 pt-2">
+              {/* Bullet Points */}
+              <ul className="space-y-3">
                 {section.points.map((pt, i) => (
-                  <li key={i} className="flex items-start gap-3 text-xs sm:text-sm text-slate-300 font-medium">
-                    <span className="material-symbols-outlined text-emerald-400 text-[18px] shrink-0 mt-0.5">check_circle</span>
-                    <span>{pt}</span>
+                  <li key={i} className="flex items-start gap-3 text-xs sm:text-sm font-medium">
+                    <span className="material-symbols-outlined text-emerald-500 text-[20px] shrink-0 mt-0.5">
+                      check_circle
+                    </span>
+                    <span className={theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}>
+                      {pt}
+                    </span>
                   </li>
                 ))}
               </ul>
 
-              <div className="pt-4">
+              <div className="pt-2">
                 <Link
                   to="/signup?plan=professional"
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs rounded-xl shadow-md transition-all"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-md transition-all"
                 >
-                  <span>Tester ce Module</span>
+                  <span>Tester ce Module Gratuitement</span>
                   <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
                 </Link>
               </div>
             </div>
           </div>
         ))}
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-20 max-w-5xl mx-auto px-4 text-center">
-        <div className="p-10 rounded-3xl bg-gradient-to-r from-blue-900/60 via-slate-900 to-indigo-900/60 border border-blue-500/30 space-y-6">
-          <h2 className="text-3xl sm:text-4xl font-black text-white">
-            Besoin d'une Démonstration Personnalisée ?
-          </h2>
-          <p className="text-slate-300 text-sm sm:text-base max-w-2xl mx-auto">
-            Nos ingénieurs industriels viennent dans votre usine ou organisent une session en visio pour configurer vos premières machines.
-          </p>
-          <div className="flex justify-center gap-4">
-            <Link
-              to="/contact"
-              className="px-8 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-black text-sm rounded-xl shadow-lg transition-all"
-            >
-              Planifier une Démo
-            </Link>
-          </div>
-        </div>
       </section>
 
       <MarketingFooter />

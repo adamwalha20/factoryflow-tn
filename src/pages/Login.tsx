@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/auth';
+import { useThemeStore } from '../store/theme';
 import { hashPassword } from '../utils/crypto';
 
 export function Login() {
@@ -12,6 +13,7 @@ export function Login() {
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const { setTestUser } = useAuthStore();
+  const { theme, toggleTheme } = useThemeStore();
 
   useEffect(() => {
     const autoEmail = searchParams.get('email');
@@ -210,7 +212,9 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between p-4 font-sans selection:bg-blue-600 selection:text-white">
+    <div className={`min-h-screen font-sans transition-colors duration-300 flex flex-col justify-between p-4 selection:bg-blue-600 selection:text-white ${
+      theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'
+    }`}>
       
       {/* Top Bar */}
       <div className="max-w-6xl w-full mx-auto flex items-center justify-between py-4">
@@ -218,46 +222,76 @@ export function Login() {
           <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold shadow-md shadow-blue-500/20">
             <span className="material-symbols-outlined text-[22px]">precision_manufacturing</span>
           </div>
-          <span className="text-lg font-black text-white tracking-tight">
-            FactoryFlow <span className="text-blue-400 font-extrabold text-xs">TN</span>
+          <span className={`text-lg font-black tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+            FactoryFlow <span className="text-blue-500 font-extrabold text-xs">TN</span>
           </span>
         </Link>
 
-        <Link to="/signup?plan=professional" className="text-xs font-black text-blue-400 hover:text-blue-300">
-          Créer un compte usine →
-        </Link>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={toggleTheme}
+            title={theme === 'dark' ? 'Mode Clair' : 'Mode Sombre'}
+            className={`p-2 rounded-xl border transition-all ${
+              theme === 'dark'
+                ? 'bg-slate-800 border-slate-700 text-amber-400 hover:bg-slate-700'
+                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100 shadow-xs'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[18px]">
+              {theme === 'dark' ? 'light_mode' : 'dark_mode'}
+            </span>
+          </button>
+          <Link
+            to="/signup?plan=professional"
+            className="text-xs font-black text-blue-600 hover:text-blue-500"
+          >
+            Créer un compte usine →
+          </Link>
+        </div>
       </div>
 
       {/* Login Card */}
       <div className="flex-1 flex items-center justify-center py-8">
-        <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-8 sm:p-10 w-full max-w-md shadow-2xl backdrop-blur-xl space-y-6">
+        <div className={`border rounded-3xl p-8 sm:p-10 w-full max-w-md transition-all ${
+          theme === 'dark'
+            ? 'bg-slate-900/90 border-slate-800 shadow-2xl backdrop-blur-xl'
+            : 'bg-white border-slate-200 shadow-xl'
+        } space-y-6`}>
           
           <div className="text-center space-y-2">
-            <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400 mx-auto">
+            <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-500 mx-auto">
               <span className="material-symbols-outlined text-[28px]">lock</span>
             </div>
-            <h1 className="text-2xl font-black text-white tracking-tight">Connexion Espace Usine</h1>
-            <p className="text-xs text-slate-400 font-medium">
+            <h1 className={`text-2xl font-black tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-950'}`}>
+              Connexion Espace Usine
+            </h1>
+            <p className={`text-xs font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
               Accédez à la supervision de votre usine ou aux postes d'atelier.
             </p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Email Professionnel</label>
+              <label className={`block text-xs font-bold uppercase mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
+                Email Professionnel
+              </label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="tablette@usine.tn ou email manager"
-                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-blue-500 font-medium"
+                className={`w-full px-4 py-3 rounded-xl text-sm font-medium border focus:outline-none focus:border-blue-500 transition-all ${
+                  theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                }`}
                 required
               />
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-bold text-slate-300 uppercase">Mot de passe</label>
+                <label className={`block text-xs font-bold uppercase ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
+                  Mot de passe
+                </label>
                 <span className="text-[11px] text-slate-400">PIN ouvrier sur tablette</span>
               </div>
               <input
@@ -265,13 +299,15 @@ export function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-blue-500 font-medium"
+                className={`w-full px-4 py-3 rounded-xl text-sm font-medium border focus:outline-none focus:border-blue-500 transition-all ${
+                  theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                }`}
                 required
               />
             </div>
 
             {error && (
-              <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs font-bold text-center">
+              <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-500 text-xs font-bold text-center">
                 {error}
               </div>
             )}
@@ -293,15 +329,21 @@ export function Login() {
           </form>
 
           {/* Quick Demo Credentials Box */}
-          <div className="pt-4 border-t border-slate-800 text-[11px] text-slate-400 space-y-1.5">
-            <p className="font-bold text-slate-300">💡 Comptes d'Accès Usine :</p>
+          <div className={`pt-4 border-t text-[11px] space-y-1.5 ${
+            theme === 'dark' ? 'border-slate-800 text-slate-400' : 'border-slate-100 text-slate-500'
+          }`}>
+            <p className={`font-bold ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>💡 Comptes d'Accès Usine :</p>
             <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
-              <div className="p-2 bg-slate-950 rounded-lg border border-slate-800">
-                <span className="text-blue-400 font-bold block">Superviseur :</span>
+              <div className={`p-2 rounded-lg border ${
+                theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+              }`}>
+                <span className="text-blue-500 font-bold block">Superviseur :</span>
                 dev@factoryflow.tn
               </div>
-              <div className="p-2 bg-slate-950 rounded-lg border border-slate-800">
-                <span className="text-emerald-400 font-bold block">Tablette Atelier :</span>
+              <div className={`p-2 rounded-lg border ${
+                theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+              }`}>
+                <span className="text-emerald-500 font-bold block">Tablette Atelier :</span>
                 tablette@usine.tn
               </div>
             </div>
@@ -311,7 +353,9 @@ export function Login() {
       </div>
 
       {/* Footer */}
-      <div className="max-w-6xl w-full mx-auto py-4 text-center text-xs text-slate-400">
+      <div className={`max-w-6xl w-full mx-auto py-4 text-center text-xs ${
+        theme === 'dark' ? 'text-slate-500' : 'text-slate-400'
+      }`}>
         © {new Date().getFullYear()} FactoryFlow TN. Plateforme SaaS Industrielle Sécurisée.
       </div>
     </div>

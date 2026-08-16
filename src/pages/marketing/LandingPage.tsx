@@ -110,11 +110,15 @@ export function LandingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-blue-600 selection:text-white">
+    <div className={`min-h-screen font-sans transition-colors duration-300 selection:bg-blue-600 selection:text-white ${
+      theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'
+    }`}>
       <MarketingNavbar />
 
       {/* 🚀 HERO SECTION WITH DYNAMIC VISUALS */}
-      <section className="relative pt-12 pb-20 lg:pt-20 lg:pb-32 overflow-hidden border-b border-slate-900">
+      <section className={`relative pt-12 pb-20 lg:pt-20 lg:pb-32 overflow-hidden border-b transition-colors ${
+        theme === 'dark' ? 'border-slate-900' : 'border-slate-200'
+      }`}>
         {/* Background glow effects */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] bg-gradient-to-tr from-blue-600/20 via-indigo-500/20 to-purple-600/10 blur-[140px] pointer-events-none rounded-full" />
         <div className="absolute top-10 right-10 w-96 h-96 bg-cyan-500/10 blur-[100px] pointer-events-none rounded-full" />
@@ -123,21 +127,25 @@ export function LandingPage() {
           
           <div className="text-center max-w-3xl mx-auto space-y-6">
             {/* Top Badge */}
-            <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-black uppercase tracking-widest backdrop-blur-md shadow-lg shadow-blue-500/5 animate-pulse">
-              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-500 text-xs font-black uppercase tracking-widest backdrop-blur-md shadow-lg shadow-blue-500/5 animate-pulse">
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
               <span>Le 1er Système MES SaaS Industriel en Tunisie 🇹🇳</span>
             </div>
 
             {/* Main Headline */}
-            <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-white leading-[1.12]">
+            <h1 className={`text-4xl sm:text-6xl font-black tracking-tight leading-[1.12] ${
+              theme === 'dark' ? 'text-white' : 'text-slate-950'
+            }`}>
               Digitalisez votre Usine.<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-indigo-400">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-cyan-500 to-indigo-500">
                 Augmentez votre TRS.
               </span>
             </h1>
 
             {/* Sub-headline */}
-            <p className="text-lg sm:text-xl text-slate-300 font-medium leading-relaxed">
+            <p className={`text-lg sm:text-xl font-medium leading-relaxed ${
+              theme === 'dark' ? 'text-slate-300' : 'text-slate-600'
+            }`}>
               Tablettes tactiles d'atelier, traçabilité QR code, suivi des ordres de fabrication et connecteurs Sage / Odoo. Conçu spécialement pour les industriels tunisiens.
             </p>
 
