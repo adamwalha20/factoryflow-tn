@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { useTenantStore } from '../../store/tenantStore';
 import { useMesStore } from '../../store/mesStore';
 import { useProductionStore } from '../../store/production';
+import { useThemeStore } from '../../store/theme';
 import toast from 'react-hot-toast';
 
 export function OnboardingWizard() {
@@ -11,6 +12,7 @@ export function OnboardingWizard() {
   const { currentOrg, fetchTenantData, updateCurrentOrg } = useTenantStore();
   const { addArticle } = useMesStore();
   const { addMachine } = useProductionStore();
+  const { theme, toggleTheme } = useThemeStore();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
@@ -176,35 +178,62 @@ export function OnboardingWizard() {
   ];
 
   return (
-    <div className="min-h-screen bg-zinc-100 flex flex-col justify-between font-sans">
+    <div className={`min-h-screen font-sans transition-colors duration-300 flex flex-col justify-between ${
+      theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'
+    }`}>
       
       {/* Top Header */}
-      <header className="bg-white border-b border-zinc-200 px-6 py-4 flex items-center justify-between">
+      <header className={`px-6 py-4 flex items-center justify-between border-b transition-colors ${
+        theme === 'dark' ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200 shadow-xs'
+      }`}>
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold shadow-md shadow-blue-600/20">
             <span className="material-symbols-outlined text-[24px]">precision_manufacturing</span>
           </div>
           <div>
-            <h1 className="text-base font-black text-zinc-900 leading-tight">
+            <h1 className={`text-base font-black leading-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
               Bienvenue chez {currentOrg?.name || 'Votre Usine'}
             </h1>
-            <p className="text-xs text-zinc-500 font-medium">Assistant de démarrage express (5 étapes)</p>
+            <p className={`text-xs font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
+              Assistant de démarrage express (5 étapes)
+            </p>
           </div>
         </div>
 
-        <button
-          onClick={handleCompleteOnboarding}
-          className="text-xs font-bold text-zinc-500 hover:text-zinc-900 px-3 py-1.5 rounded-lg hover:bg-zinc-100 transition-colors"
-        >
-          Passer la configuration →
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={toggleTheme}
+            title={theme === 'dark' ? 'Mode Clair' : 'Mode Sombre'}
+            className={`p-2 rounded-xl border transition-all ${
+              theme === 'dark'
+                ? 'bg-slate-800 border-slate-700 text-amber-400 hover:bg-slate-700'
+                : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[18px]">
+              {theme === 'dark' ? 'light_mode' : 'dark_mode'}
+            </span>
+          </button>
+          <button
+            onClick={handleCompleteOnboarding}
+            className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${
+              theme === 'dark'
+                ? 'text-slate-400 hover:text-white hover:bg-slate-800'
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            Passer la configuration →
+          </button>
+        </div>
       </header>
 
       {/* Main Wizard Content */}
       <main className="max-w-4xl w-full mx-auto px-4 py-8 flex-1 flex flex-col justify-center">
         
         {/* Progress Bar */}
-        <div className="bg-white p-4 rounded-2xl border border-zinc-200 shadow-xs mb-8">
+        <div className={`p-4 rounded-2xl border transition-colors mb-8 ${
+          theme === 'dark' ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200 shadow-xs'
+        }`}>
           <div className="grid grid-cols-5 gap-2 text-center">
             {stepsHeaders.map((st) => (
               <div
@@ -213,8 +242,12 @@ export function OnboardingWizard() {
                   currentStep === st.num
                     ? 'bg-blue-600 text-white shadow-sm'
                     : currentStep > st.num
-                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                    : 'bg-zinc-50 text-zinc-400'
+                    ? theme === 'dark'
+                      ? 'bg-emerald-950/50 text-emerald-300 border border-emerald-800'
+                      : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                    : theme === 'dark'
+                      ? 'bg-slate-950 text-slate-500'
+                      : 'bg-slate-100 text-slate-400'
                 }`}
               >
                 <div className="font-black">{st.num}. {st.label}</div>
@@ -224,47 +257,75 @@ export function OnboardingWizard() {
         </div>
 
         {/* Step Card Container */}
-        <div className="bg-white rounded-3xl p-8 sm:p-10 border border-zinc-200 shadow-md">
+        <div className={`p-8 sm:p-10 rounded-3xl border transition-all ${
+          theme === 'dark'
+            ? 'bg-slate-900/90 border-slate-800 shadow-2xl backdrop-blur-xl'
+            : 'bg-white border-slate-200 shadow-md'
+        }`}>
           
           {/* STEP 1: Factory Profile */}
           {currentStep === 1 && (
             <div className="space-y-6">
               <div>
-                <span className="text-xs font-black text-blue-600 uppercase">Étape 1 sur 5</span>
-                <h2 className="text-2xl font-black text-zinc-900 mt-1">Profil & Horaires de l'Usine</h2>
-                <p className="text-sm text-zinc-500 font-medium">
+                <span className="text-xs font-black text-blue-500 uppercase tracking-wider">Étape 1 sur 5</span>
+                <h2 className={`text-2xl font-black mt-1 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                  Profil & Horaires de l'Usine
+                </h2>
+                <p className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
                   Vérifiez les paramètres par défaut de votre site de fabrication.
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-zinc-50 p-6 rounded-2xl border border-zinc-200 text-sm">
+              <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 p-6 rounded-2xl border text-sm ${
+                theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+              }`}>
                 <div>
-                  <span className="text-xs text-zinc-400 font-bold uppercase block">Nom de l'Usine :</span>
-                  <span className="font-black text-zinc-900 text-base">{currentOrg?.name || 'Usine Principale'}</span>
+                  <span className={`text-xs font-bold uppercase block ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Nom de l'Usine :
+                  </span>
+                  <span className={`font-black text-base ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                    {currentOrg?.name || 'Usine Principale'}
+                  </span>
                 </div>
                 <div>
-                  <span className="text-xs text-zinc-400 font-bold uppercase block">Localisation :</span>
-                  <span className="font-black text-zinc-900 text-base">{currentOrg?.city || 'Tunisie'} ({currentOrg?.country || 'Tunisia'})</span>
+                  <span className={`text-xs font-bold uppercase block ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Localisation :
+                  </span>
+                  <span className={`font-black text-base ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                    {currentOrg?.city || 'Tunis'} ({currentOrg?.country || 'Tunisia'})
+                  </span>
                 </div>
                 <div>
-                  <span className="text-xs text-zinc-400 font-bold uppercase block">Fuseau Horaire :</span>
-                  <span className="font-bold text-zinc-700">Africa/Tunis (GMT+1)</span>
+                  <span className={`text-xs font-bold uppercase block ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Fuseau Horaire :
+                  </span>
+                  <span className={`font-bold ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
+                    Africa/Tunis (GMT+1)
+                  </span>
                 </div>
                 <div>
-                  <span className="text-xs text-zinc-400 font-bold uppercase block">Langue par défaut :</span>
-                  <span className="font-bold text-zinc-700">Français (Arabe RTL disponible)</span>
+                  <span className={`text-xs font-bold uppercase block ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Langue par défaut :
+                  </span>
+                  <span className={`font-bold ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
+                    Français (Arabe RTL disponible)
+                  </span>
                 </div>
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl text-xs text-blue-900 font-medium flex items-center gap-3">
-                <span className="material-symbols-outlined text-[24px] text-blue-600 shrink-0">info</span>
+              <div className={`p-4 rounded-xl text-xs font-medium flex items-center gap-3 border ${
+                theme === 'dark'
+                  ? 'bg-blue-950/40 border-blue-800 text-blue-200'
+                  : 'bg-blue-50 border-blue-200 text-blue-900'
+              }`}>
+                <span className="material-symbols-outlined text-[24px] text-blue-500 shrink-0">info</span>
                 <span>Les shifts d'équipe sont configurés par défaut en 3x8 (Matin 06h-14h, Après-midi 14h-22h, Nuit 22h-06h). Vous pourrez les ajuster à tout moment dans Paramètres.</span>
               </div>
 
               <div className="flex justify-end pt-4">
                 <button
                   onClick={() => setCurrentStep(2)}
-                  className="px-8 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-black text-sm rounded-xl shadow-md transition-all flex items-center gap-2"
+                  className="px-8 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-black text-sm rounded-xl shadow-md transition-all flex items-center gap-2"
                 >
                   <span>Continuer : Ajouter des Machines</span>
                   <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
@@ -277,22 +338,28 @@ export function OnboardingWizard() {
           {currentStep === 2 && (
             <div className="space-y-6">
               <div>
-                <span className="text-xs font-black text-blue-600 uppercase">Étape 2 sur 5</span>
-                <h2 className="text-2xl font-black text-zinc-900 mt-1">Parc Machines & Lignes de Production</h2>
-                <p className="text-sm text-zinc-500 font-medium">
+                <span className="text-xs font-black text-blue-500 uppercase tracking-wider">Étape 2 sur 5</span>
+                <h2 className={`text-2xl font-black mt-1 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                  Parc Machines & Lignes de Production
+                </h2>
+                <p className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
                   Ajoutez vos premières machines. Les tablettes atelier seront assignées à ces postes.
                 </p>
               </div>
 
               {/* Machine Input Bar */}
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-zinc-50 p-4 rounded-2xl border border-zinc-200">
+              <div className={`grid grid-cols-1 sm:grid-cols-4 gap-3 p-4 rounded-2xl border ${
+                theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+              }`}>
                 <div className="sm:col-span-2">
                   <input
                     type="text"
                     placeholder="Nom Machine (ex: Bobineuse M03)"
                     value={newMachine.name}
                     onChange={(e) => setNewMachine({ ...newMachine, name: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-xl text-xs font-bold"
+                    className={`w-full px-3 py-2 rounded-xl text-xs font-bold border transition-all ${
+                      theme === 'dark' ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                    }`}
                   />
                 </div>
                 <div>
@@ -301,13 +368,15 @@ export function OnboardingWizard() {
                     placeholder="Code (ex: M03)"
                     value={newMachine.code}
                     onChange={(e) => setNewMachine({ ...newMachine, code: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-xl text-xs font-bold"
+                    className={`w-full px-3 py-2 rounded-xl text-xs font-bold border transition-all ${
+                      theme === 'dark' ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                    }`}
                   />
                 </div>
                 <button
                   type="button"
                   onClick={handleAddMachine}
-                  className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-black rounded-xl"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-black rounded-xl transition-all"
                 >
                   + Ajouter
                 </button>
@@ -315,13 +384,21 @@ export function OnboardingWizard() {
 
               {/* Machine Cards List */}
               {machinesList.length === 0 ? (
-                <div className="p-6 bg-zinc-50 border border-dashed border-zinc-300 rounded-2xl text-center space-y-3">
-                  <span className="material-symbols-outlined text-zinc-400 text-[32px]">precision_manufacturing</span>
-                  <p className="text-xs text-zinc-500 font-medium">Aucune machine ajoutée pour l'instant. Saisissez vos machines ci-dessus ou chargez des exemples.</p>
+                <div className={`p-6 border border-dashed rounded-2xl text-center space-y-3 ${
+                  theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-300'
+                }`}>
+                  <span className="material-symbols-outlined text-slate-400 text-[32px]">precision_manufacturing</span>
+                  <p className={`text-xs font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Aucune machine ajoutée pour l'instant. Saisissez vos machines ci-dessus ou chargez des exemples.
+                  </p>
                   <button
                     type="button"
                     onClick={loadMachineSuggestions}
-                    className="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-xl border border-blue-200 transition-colors"
+                    className={`px-4 py-2 text-xs font-bold rounded-xl border transition-colors ${
+                      theme === 'dark'
+                        ? 'bg-blue-950/40 hover:bg-blue-900/60 text-blue-300 border-blue-800'
+                        : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200'
+                    }`}
                   >
                     💡 Charger 2 exemples de machines
                   </button>
@@ -329,19 +406,24 @@ export function OnboardingWizard() {
               ) : (
                 <div className="space-y-2">
                   {machinesList.map((m, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-3.5 bg-white border border-zinc-200 rounded-xl">
+                    <div
+                      key={idx}
+                      className={`flex items-center justify-between p-3.5 border rounded-xl transition-all ${
+                        theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200'
+                      }`}
+                    >
                       <div className="flex items-center gap-3">
-                        <span className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 font-black text-xs flex items-center justify-center">
+                        <span className="w-8 h-8 rounded-lg bg-blue-600/20 text-blue-500 font-black text-xs flex items-center justify-center">
                           {m.code}
                         </span>
                         <div>
-                          <p className="text-sm font-black text-zinc-900">{m.name}</p>
-                          <p className="text-[11px] text-zinc-400 font-medium">{m.department}</p>
+                          <p className={`text-sm font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{m.name}</p>
+                          <p className={`text-[11px] font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>{m.department}</p>
                         </div>
                       </div>
                       <button
                         onClick={() => setMachinesList(machinesList.filter((_, i) => i !== idx))}
-                        className="text-zinc-400 hover:text-red-500 text-xs font-bold"
+                        className="text-slate-400 hover:text-red-500 text-xs font-bold"
                       >
                         Supprimer
                       </button>
@@ -353,13 +435,17 @@ export function OnboardingWizard() {
               <div className="flex justify-between items-center pt-4">
                 <button
                   onClick={() => setCurrentStep(1)}
-                  className="px-6 py-3 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-bold text-xs rounded-xl"
+                  className={`px-6 py-3 font-bold text-xs rounded-xl transition-colors ${
+                    theme === 'dark'
+                      ? 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
                 >
                   ← Précédent
                 </button>
                 <button
                   onClick={() => setCurrentStep(3)}
-                  className="px-8 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-black text-sm rounded-xl shadow-md transition-all flex items-center gap-2"
+                  className="px-8 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-black text-sm rounded-xl shadow-md transition-all flex items-center gap-2"
                 >
                   <span>Continuer : Ouvriers & Opérateurs</span>
                   <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
@@ -372,22 +458,28 @@ export function OnboardingWizard() {
           {currentStep === 3 && (
             <div className="space-y-6">
               <div>
-                <span className="text-xs font-black text-blue-600 uppercase">Étape 3 sur 5</span>
-                <h2 className="text-2xl font-black text-zinc-900 mt-1">Opérateurs & Ouvriers Machine</h2>
-                <p className="text-sm text-zinc-500 font-medium">
+                <span className="text-xs font-black text-blue-500 uppercase tracking-wider">Étape 3 sur 5</span>
+                <h2 className={`text-2xl font-black mt-1 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                  Opérateurs & Ouvriers Machine
+                </h2>
+                <p className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
                   Créez les profils des opérateurs qui utiliseront les tablettes tactiles en atelier.
                 </p>
               </div>
 
               {/* Worker Input Bar */}
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-zinc-50 p-4 rounded-2xl border border-zinc-200">
+              <div className={`grid grid-cols-1 sm:grid-cols-4 gap-3 p-4 rounded-2xl border ${
+                theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+              }`}>
                 <div>
                   <input
                     type="text"
                     placeholder="Prénom"
                     value={newWorker.first_name}
                     onChange={(e) => setNewWorker({ ...newWorker, first_name: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-xl text-xs font-bold"
+                    className={`w-full px-3 py-2 rounded-xl text-xs font-bold border transition-all ${
+                      theme === 'dark' ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                    }`}
                   />
                 </div>
                 <div>
@@ -396,7 +488,9 @@ export function OnboardingWizard() {
                     placeholder="Nom"
                     value={newWorker.last_name}
                     onChange={(e) => setNewWorker({ ...newWorker, last_name: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-xl text-xs font-bold"
+                    className={`w-full px-3 py-2 rounded-xl text-xs font-bold border transition-all ${
+                      theme === 'dark' ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                    }`}
                   />
                 </div>
                 <div>
@@ -407,13 +501,15 @@ export function OnboardingWizard() {
                     placeholder="1234"
                     value={newWorker.pin_code}
                     onChange={(e) => setNewWorker({ ...newWorker, pin_code: e.target.value.replace(/[^0-9]/g, '').slice(0, 4) })}
-                    className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-xl text-xs font-bold font-mono text-blue-600"
+                    className={`w-full px-3 py-2 rounded-xl text-xs font-bold font-mono text-blue-500 border transition-all ${
+                      theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-300'
+                    }`}
                   />
                 </div>
                 <button
                   type="button"
                   onClick={handleAddWorker}
-                  className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-black rounded-xl"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-black rounded-xl transition-all"
                 >
                   + Ajouter
                 </button>
@@ -421,13 +517,21 @@ export function OnboardingWizard() {
 
               {/* Worker Cards List */}
               {workersList.length === 0 ? (
-                <div className="p-6 bg-zinc-50 border border-dashed border-zinc-300 rounded-2xl text-center space-y-3">
-                  <span className="material-symbols-outlined text-zinc-400 text-[32px]">badge</span>
-                  <p className="text-xs text-zinc-500 font-medium">Aucun ouvrier ajouté pour l'instant. Saisissez vos opérateurs ci-dessus ou chargez des exemples.</p>
+                <div className={`p-6 border border-dashed rounded-2xl text-center space-y-3 ${
+                  theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-300'
+                }`}>
+                  <span className="material-symbols-outlined text-slate-400 text-[32px]">badge</span>
+                  <p className={`text-xs font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Aucun ouvrier ajouté pour l'instant. Saisissez vos opérateurs ci-dessus ou chargez des exemples.
+                  </p>
                   <button
                     type="button"
                     onClick={loadWorkerSuggestions}
-                    className="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-xl border border-blue-200 transition-colors"
+                    className={`px-4 py-2 text-xs font-bold rounded-xl border transition-colors ${
+                      theme === 'dark'
+                        ? 'bg-blue-950/40 hover:bg-blue-900/60 text-blue-300 border-blue-800'
+                        : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200'
+                    }`}
                   >
                     💡 Charger 2 exemples d'opérateurs
                   </button>
@@ -435,19 +539,28 @@ export function OnboardingWizard() {
               ) : (
                 <div className="space-y-2">
                   {workersList.map((w, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-3.5 bg-white border border-zinc-200 rounded-xl">
+                    <div
+                      key={idx}
+                      className={`flex items-center justify-between p-3.5 border rounded-xl transition-all ${
+                        theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200'
+                      }`}
+                    >
                       <div className="flex items-center gap-3">
-                        <span className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 font-black text-xs flex items-center justify-center">
+                        <span className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 font-black text-xs flex items-center justify-center">
                           {w.first_name[0] || 'O'}{w.last_name[0] || 'P'}
                         </span>
                         <div>
-                          <p className="text-sm font-black text-zinc-900">{w.first_name} {w.last_name}</p>
-                          <p className="text-[11px] text-zinc-400 font-medium">Rôle : Opérateur Machine • Code PIN : •••• {w.pin_code}</p>
+                          <p className={`text-sm font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                            {w.first_name} {w.last_name}
+                          </p>
+                          <p className={`text-[11px] font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
+                            Rôle : Opérateur Machine • Code PIN : •••• {w.pin_code}
+                          </p>
                         </div>
                       </div>
                       <button
                         onClick={() => setWorkersList(workersList.filter((_, i) => i !== idx))}
-                        className="text-zinc-400 hover:text-red-500 text-xs font-bold"
+                        className="text-slate-400 hover:text-red-500 text-xs font-bold"
                       >
                         Supprimer
                       </button>
@@ -459,13 +572,17 @@ export function OnboardingWizard() {
               <div className="flex justify-between items-center pt-4">
                 <button
                   onClick={() => setCurrentStep(2)}
-                  className="px-6 py-3 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-bold text-xs rounded-xl"
+                  className={`px-6 py-3 font-bold text-xs rounded-xl transition-colors ${
+                    theme === 'dark'
+                      ? 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
                 >
                   ← Précédent
                 </button>
                 <button
                   onClick={() => setCurrentStep(4)}
-                  className="px-8 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-black text-sm rounded-xl shadow-md transition-all flex items-center gap-2"
+                  className="px-8 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-black text-sm rounded-xl shadow-md transition-all flex items-center gap-2"
                 >
                   <span>Continuer : Articles & Produits</span>
                   <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
@@ -478,22 +595,28 @@ export function OnboardingWizard() {
           {currentStep === 4 && (
             <div className="space-y-6">
               <div>
-                <span className="text-xs font-black text-blue-600 uppercase">Étape 4 sur 5</span>
-                <h2 className="text-2xl font-black text-zinc-900 mt-1">Articles & Produits Finis</h2>
-                <p className="text-sm text-zinc-500 font-medium">
+                <span className="text-xs font-black text-blue-500 uppercase tracking-wider">Étape 4 sur 5</span>
+                <h2 className={`text-2xl font-black mt-1 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                  Articles & Produits Finis
+                </h2>
+                <p className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
                   Renseignez vos premiers articles pour pouvoir lancer des Ordres de Fabrication (OF).
                 </p>
               </div>
 
               {/* Article Input Bar */}
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-zinc-50 p-4 rounded-2xl border border-zinc-200">
+              <div className={`grid grid-cols-1 sm:grid-cols-4 gap-3 p-4 rounded-2xl border ${
+                theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+              }`}>
                 <div>
                   <input
                     type="text"
                     placeholder="Référence (ex: ART-01)"
                     value={newArticle.reference}
                     onChange={(e) => setNewArticle({ ...newArticle, reference: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-xl text-xs font-bold"
+                    className={`w-full px-3 py-2 rounded-xl text-xs font-bold border transition-all ${
+                      theme === 'dark' ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                    }`}
                   />
                 </div>
                 <div className="sm:col-span-2">
@@ -502,13 +625,15 @@ export function OnboardingWizard() {
                     placeholder="Désignation Produit"
                     value={newArticle.designation}
                     onChange={(e) => setNewArticle({ ...newArticle, designation: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-xl text-xs font-bold"
+                    className={`w-full px-3 py-2 rounded-xl text-xs font-bold border transition-all ${
+                      theme === 'dark' ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                    }`}
                   />
                 </div>
                 <button
                   type="button"
                   onClick={handleAddArticle}
-                  className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-black rounded-xl"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-black rounded-xl transition-all"
                 >
                   + Ajouter
                 </button>
@@ -516,13 +641,21 @@ export function OnboardingWizard() {
 
               {/* Article Cards List */}
               {articlesList.length === 0 ? (
-                <div className="p-6 bg-zinc-50 border border-dashed border-zinc-300 rounded-2xl text-center space-y-3">
-                  <span className="material-symbols-outlined text-zinc-400 text-[32px]">inventory_2</span>
-                  <p className="text-xs text-zinc-500 font-medium">Aucun article ajouté pour l'instant. Saisissez vos produits ci-dessus ou chargez des exemples.</p>
+                <div className={`p-6 border border-dashed rounded-2xl text-center space-y-3 ${
+                  theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-300'
+                }`}>
+                  <span className="material-symbols-outlined text-slate-400 text-[32px]">inventory_2</span>
+                  <p className={`text-xs font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Aucun article ajouté pour l'instant. Saisissez vos produits ci-dessus ou chargez des exemples.
+                  </p>
                   <button
                     type="button"
                     onClick={loadArticleSuggestions}
-                    className="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-xl border border-blue-200 transition-colors"
+                    className={`px-4 py-2 text-xs font-bold rounded-xl border transition-colors ${
+                      theme === 'dark'
+                        ? 'bg-blue-950/40 hover:bg-blue-900/60 text-blue-300 border-blue-800'
+                        : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200'
+                    }`}
                   >
                     💡 Charger 2 exemples d'articles
                   </button>
@@ -530,17 +663,22 @@ export function OnboardingWizard() {
               ) : (
                 <div className="space-y-2">
                   {articlesList.map((a, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-3.5 bg-white border border-zinc-200 rounded-xl">
+                    <div
+                      key={idx}
+                      className={`flex items-center justify-between p-3.5 border rounded-xl transition-all ${
+                        theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200'
+                      }`}
+                    >
                       <div className="flex items-center gap-3">
-                        <span className="material-symbols-outlined text-blue-600">inventory_2</span>
+                        <span className="material-symbols-outlined text-blue-500">inventory_2</span>
                         <div>
-                          <p className="text-sm font-black text-zinc-900">{a.reference}</p>
-                          <p className="text-[11px] text-zinc-500 font-medium">{a.designation}</p>
+                          <p className={`text-sm font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{a.reference}</p>
+                          <p className={`text-[11px] font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>{a.designation}</p>
                         </div>
                       </div>
                       <button
                         onClick={() => setArticlesList(articlesList.filter((_, i) => i !== idx))}
-                        className="text-zinc-400 hover:text-red-500 text-xs font-bold"
+                        className="text-slate-400 hover:text-red-500 text-xs font-bold"
                       >
                         Supprimer
                       </button>
@@ -552,13 +690,17 @@ export function OnboardingWizard() {
               <div className="flex justify-between items-center pt-4">
                 <button
                   onClick={() => setCurrentStep(3)}
-                  className="px-6 py-3 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-bold text-xs rounded-xl"
+                  className={`px-6 py-3 font-bold text-xs rounded-xl transition-colors ${
+                    theme === 'dark'
+                      ? 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
                 >
                   ← Précédent
                 </button>
                 <button
                   onClick={() => setCurrentStep(5)}
-                  className="px-8 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-black text-sm rounded-xl shadow-md transition-all flex items-center gap-2"
+                  className="px-8 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-black text-sm rounded-xl shadow-md transition-all flex items-center gap-2"
                 >
                   <span>Continuer : Finaliser le Démarrage</span>
                   <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
@@ -570,36 +712,40 @@ export function OnboardingWizard() {
           {/* STEP 5: Launch Factory */}
           {currentStep === 5 && (
             <div className="space-y-6 text-center py-6">
-              <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/20">
+              <div className="w-20 h-20 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/20 border border-emerald-500/30">
                 <span className="material-symbols-outlined text-[48px]">rocket_launch</span>
               </div>
 
               <div>
-                <span className="text-xs font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                <span className="text-xs font-black text-emerald-500 uppercase tracking-widest bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/30">
                   Prêt pour la Production
                 </span>
-                <h2 className="text-3xl font-black text-zinc-900 mt-3">Votre Usine est Opérationnelle !</h2>
-                <p className="text-sm text-zinc-600 font-medium max-w-md mx-auto mt-2">
+                <h2 className={`text-3xl font-black mt-3 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                  Votre Usine est Opérationnelle !
+                </h2>
+                <p className={`text-sm font-medium max-w-md mx-auto mt-2 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
                   Vos machines, opérateurs et articles sont configurés. Vous bénéficiez de 14 jours d'accès complet.
                 </p>
               </div>
 
-              <div className="bg-zinc-50 border border-zinc-200 p-6 rounded-2xl max-w-md mx-auto text-left text-xs text-zinc-700 space-y-2">
+              <div className={`border p-6 rounded-2xl max-w-md mx-auto text-left text-xs space-y-2 ${
+                theme === 'dark' ? 'bg-slate-950 border-slate-800 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-700'
+              }`}>
                 <div className="flex justify-between font-bold">
                   <span>Machines configurées :</span>
-                  <span className="text-blue-600">{machinesList.length} machines</span>
+                  <span className="text-blue-500">{machinesList.length} machines</span>
                 </div>
                 <div className="flex justify-between font-bold">
                   <span>Opérateurs atelier :</span>
-                  <span className="text-blue-600">{workersList.length} ouvriers</span>
+                  <span className="text-blue-500">{workersList.length} ouvriers</span>
                 </div>
                 <div className="flex justify-between font-bold">
                   <span>Articles au catalogue :</span>
-                  <span className="text-blue-600">{articlesList.length} références</span>
+                  <span className="text-blue-500">{articlesList.length} références</span>
                 </div>
                 <div className="flex justify-between font-bold">
                   <span>Statut Forfait :</span>
-                  <span className="text-emerald-600">Essai Gratuit Actif (14 jours)</span>
+                  <span className="text-emerald-500">Essai Gratuit Actif (14 jours)</span>
                 </div>
               </div>
 
@@ -607,7 +753,7 @@ export function OnboardingWizard() {
                 <button
                   onClick={handleCompleteOnboarding}
                   disabled={isSaving}
-                  className="px-10 py-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-black text-base rounded-2xl shadow-xl shadow-blue-600/30 transition-all flex items-center justify-center gap-2"
+                  className="px-10 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white font-black text-base rounded-2xl shadow-xl shadow-blue-600/30 transition-all flex items-center justify-center gap-2"
                 >
                   {isSaving ? (
                     <span>Ouverture de l'Usine...</span>
