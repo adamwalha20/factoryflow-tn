@@ -4,7 +4,7 @@ import { MarketingNavbar } from '../../components/marketing/Navbar';
 import { MarketingFooter } from '../../components/marketing/Footer';
 
 export function LandingPage() {
-  const [activeTab, setActiveTab] = useState<'tablet' | 'trs' | 'bom' | 'pareto'>('tablet');
+  const [activeTab, setActiveTab] = useState<'tablet' | 'trs' | 'bom' | 'scanner'>('tablet');
   
   // Interactive Tablet Simulator State
   const [simGoodCount, setSimGoodCount] = useState(144);
@@ -12,13 +12,13 @@ export function LandingPage() {
   const [simColisage, setSimColisage] = useState(36);
 
   // Interactive ROI Calculator State
-  const [calcMachines, setCalcMachines] = useState(4);
+  const [calcMachines, setCalcMachines] = useState(6);
   const [calcShifts, setCalcShifts] = useState(2); // 1, 2 or 3 shifts
-  const [calcScrapCost, setCalcScrapCost] = useState(150); // TND / day / machine
+  const [calcScrapCost, setCalcScrapCost] = useState(180); // TND / day / machine
 
   // Derived ROI calculations
   const monthlyScrapLoss = calcMachines * calcScrapCost * 26 * (calcShifts / 2);
-  const estimatedSavings = Math.round(monthlyScrapLoss * 0.28); // 28% scrap reduction
+  const estimatedSavings = Math.round(monthlyScrapLoss * 0.32); // 32% scrap reduction
   const planCost = calcMachines <= 3 ? 149 : calcMachines <= 10 ? 299 : 599;
   const netMonthlyGain = estimatedSavings - planCost;
   const roiMultiplier = Math.max(2, Math.round(estimatedSavings / planCost));
@@ -28,64 +28,94 @@ export function LandingPage() {
       icon: 'tablet',
       title: 'Interface Tablette Tactile Atelier',
       badge: 'Atelier Connecté',
-      description: 'Boutons tactiles géants utilisables avec gants. Comptage conforme/rebuts en direct, mode hors-ligne et synchronisation temps réel.',
+      description: 'Clavier numérique PIN instantané et boutons tactiles utilisables avec gants. Comptage conforme/rebuts en direct, mode hors-ligne et synchronisation temps réel.',
+      image: '/images/shopfloor_tablet_operator.jpg',
       color: 'from-blue-600 to-cyan-600'
     },
     {
-      icon: 'precision_manufacturing',
-      title: 'Suivi Parc Machine & TRS (OEE)',
-      badge: 'Performance Ligne',
-      description: 'Mesure continue de la disponibilité, cadence et qualité. Détection immédiate des micro-arrêts et historique MTBF.',
+      icon: 'qr_code_scanner',
+      title: 'Contrôle Qualité & Scanner QR Mobile',
+      badge: 'Zéro Défaut',
+      description: 'Validation instantanée des cartons par flash QR code. Détection des écarts de quantité et alertes non-conformité en direct.',
+      image: '/images/quality_scanner_inspection.jpg',
       color: 'from-emerald-600 to-teal-600'
     },
     {
-      icon: 'assignment',
-      title: 'Ordres de Fabrication & Colisage',
-      badge: 'Ordonnancement',
-      description: 'Lancement d\'OFs en un clic, reste à produire décrémenté en direct et génération instantanée d\'étiquettes cartons QR code.',
+      icon: 'monitoring',
+      title: 'Supervision TRS & Performance Ligne (OEE)',
+      badge: 'Temps Réel',
+      description: 'Mesure continue de la disponibilité, cadence et qualité. Détection des micro-arrêts, MTBF et alertes mécaniciens automatiques.',
+      image: '/images/smart_factory_control_room.jpg',
       color: 'from-indigo-600 to-blue-600'
     },
     {
       icon: 'inventory_2',
       title: 'Nomenclature BOM & Bobines Mères',
-      badge: 'Traçabilité Stocks',
+      badge: 'Traçabilité Matière',
       description: 'Gestion des Jumbo Rolls et matières premières. Simulateur de consommation théorique vs réelle avec coefficient de perte.',
+      image: '/images/factory_hero_smart_plant.jpg',
       color: 'from-purple-600 to-indigo-600'
     },
     {
-      icon: 'delete_sweep',
-      title: 'Analyse Pareto des Rebuts',
-      badge: 'Qualité & Coûts',
-      description: 'Diagramme Pareto automatique des causes de gaspillage (réglage, défaut matière, casse) et chiffrage des pertes en Dinars (TND).',
-      color: 'from-amber-500 to-orange-600'
+      icon: 'sync_alt',
+      title: 'Connecteurs ERP Sage 100 & Odoo',
+      badge: 'Intégration Comptable',
+      description: 'Export automatisé des consommations de matières et mouvements de stocks au format comptable tunisien standard.',
+      image: '/images/smart_factory_control_room.jpg',
+      color: 'from-rose-600 to-pink-600'
     },
     {
-      icon: 'sync_alt',
-      title: 'Connecteurs Sage 100 & Odoo',
-      badge: 'Intégration ERP',
-      description: 'Export automatisé des consommations de matières et mouvements de stocks au format comptable tunisien standard.',
-      color: 'from-rose-600 to-pink-600'
+      icon: 'shield_person',
+      title: 'Isolation Multi-Tenant & Rôles Dédiés',
+      badge: 'Sécurité Maximale',
+      description: 'Chaque usine dispose de son espace isolé. Codes PIN à 4 chiffres pour les opérateurs et mots de passe chiffrés pour les managers.',
+      image: '/images/shopfloor_tablet_operator.jpg',
+      color: 'from-amber-500 to-orange-600'
     }
   ];
 
   const industrialSectors = [
-    { name: 'Plasturgie & Injection', icon: 'category' },
-    { name: 'Emballage & Conditionnement', icon: 'inventory' },
-    { name: 'Câblage & Électronique', icon: 'settings_input_component' },
-    { name: 'Agroalimentaire', icon: 'restaurant' },
-    { name: 'Textile & Confection', icon: 'checkroom' },
-    { name: 'Mécanique & Métallurgie', icon: 'hardware' },
+    { name: 'Plasturgie & Injection', icon: 'category', badge: '12 usines équipées' },
+    { name: 'Emballage & Conditionnement', icon: 'inventory', badge: '8 lignes actives' },
+    { name: 'Câblage & Électronique', icon: 'settings_input_component', badge: '99.4% TRS' },
+    { name: 'Agroalimentaire', icon: 'restaurant', badge: 'Traçabilité HACCP' },
+    { name: 'Textile & Confection', icon: 'checkroom', badge: 'Rendement élevé' },
+    { name: 'Mécanique & Métallurgie', icon: 'hardware', badge: 'Zéro papier' },
+  ];
+
+  const testimonials = [
+    {
+      quote: "FactoryFlow TN nous a permis de réduire notre taux de rebuts de 3.8% à 1.1% en moins de deux mois. La tablette atelier avec code PIN a été adoptée par nos opérateurs dès le premier jour.",
+      author: "Kamel Ben Salah",
+      role: "Directeur d'Usine Plasturgie",
+      location: "Zone Industrielle Ben Arous",
+      logo: "SP"
+    },
+    {
+      quote: "L'intégration avec Sage 100 et le calcul automatique du TRS nous font gagner plus de 15 heures de saisie manuelle par semaine. Une visibilité totale en temps réel !",
+      author: "Mounir Trabelsi",
+      role: "Responsable Production & Lean",
+      location: "Zone Industrielle Sousse Sidi Abdelhamid",
+      logo: "AT"
+    },
+    {
+      quote: "Le système multi-opérateurs sur machine et les étiquettes QR cartons ont fluidifié notre logistique d'expédition. Fini les erreurs de colisage.",
+      author: "Salma Mejdoub",
+      role: "Directrice Qualité & Supply Chain",
+      location: "Parc Industriel Sfax",
+      logo: "PM"
+    }
   ];
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-blue-600 selection:text-white">
       <MarketingNavbar />
 
-      {/* HERO SECTION */}
-      <section className="relative pt-12 pb-20 lg:pt-20 lg:pb-32 overflow-hidden">
+      {/* 🚀 HERO SECTION WITH DYNAMIC VISUALS */}
+      <section className="relative pt-12 pb-20 lg:pt-20 lg:pb-32 overflow-hidden border-b border-slate-900">
         {/* Background glow effects */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] bg-gradient-to-tr from-blue-600/20 via-indigo-500/20 to-purple-600/10 blur-[130px] pointer-events-none rounded-full" />
-        <div className="absolute top-10 right-10 w-72 h-72 bg-blue-500/10 blur-[90px] pointer-events-none rounded-full" />
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] bg-gradient-to-tr from-blue-600/20 via-indigo-500/20 to-purple-600/10 blur-[140px] pointer-events-none rounded-full" />
+        <div className="absolute top-10 right-10 w-96 h-96 bg-cyan-500/10 blur-[100px] pointer-events-none rounded-full" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           
@@ -93,553 +123,545 @@ export function LandingPage() {
             {/* Top Badge */}
             <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-black uppercase tracking-widest backdrop-blur-md shadow-lg shadow-blue-500/5 animate-pulse">
               <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-              <span>Le 1er Système MES SaaS Industriel en Tunisie</span>
+              <span>Le 1er Système MES SaaS Industriel en Tunisie 🇹🇳</span>
             </div>
 
             {/* Main Headline */}
             <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-white leading-[1.12]">
-              Digitalisez votre atelier.{' '}
-              <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-indigo-300 to-cyan-300">
-                Éliminez le papier et les fiches Excel.
+              Digitalisez votre Usine.<br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-indigo-400">
+                Augmentez votre TRS.
               </span>
             </h1>
 
-            {/* Subtitle */}
-            <p className="text-base sm:text-xl text-slate-300 font-medium leading-relaxed max-w-2xl mx-auto">
-              Connectez vos machines et tablettes opérateurs en temps réel. Suivez vos Ordres de Fabrication (OF), le TRS (OEE), vos rebus et vos stocks sans installer de serveur local.
+            {/* Sub-headline */}
+            <p className="text-lg sm:text-xl text-slate-300 font-medium leading-relaxed">
+              Tablettes tactiles d'atelier, traçabilité QR code, suivi des ordres de fabrication et connecteurs Sage / Odoo. Conçu spécialement pour les industriels tunisiens.
             </p>
 
-            {/* CTA Buttons */}
-            <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
+            {/* CTA Action Buttons */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
               <Link
                 to="/signup?plan=professional"
-                className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-sm rounded-2xl shadow-xl shadow-blue-600/30 transition-all flex items-center justify-center gap-2.5 group"
+                className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-2xl font-black text-base shadow-xl shadow-blue-600/30 transition-all flex items-center justify-center gap-2 group"
               >
-                <span>Démarrer l'Essai Gratuit (14 Jours)</span>
-                <span className="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                <span>Démarrer l'Essai Gratuit 14 Jours</span>
+                <span className="material-symbols-outlined text-[20px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
               </Link>
               
               <Link
                 to="/contact"
-                className="w-full sm:w-auto px-6 py-4 bg-slate-900/80 hover:bg-slate-800 border border-slate-700 text-slate-200 font-bold text-sm rounded-2xl transition-all flex items-center justify-center gap-2 backdrop-blur-md"
+                className="w-full sm:w-auto px-8 py-4 bg-slate-900/80 hover:bg-slate-800 text-slate-200 border border-slate-700/80 rounded-2xl font-bold text-base transition-all flex items-center justify-center gap-2 backdrop-blur-sm"
               >
-                <span className="material-symbols-outlined text-[18px] text-blue-400">calendar_month</span>
-                <span>Demander une Démo sur Site</span>
+                <span className="material-symbols-outlined text-[20px] text-blue-400">play_circle</span>
+                <span>Demander une Démo Usine</span>
               </Link>
             </div>
 
-            {/* Trust Points */}
-            <div className="pt-4 flex flex-wrap items-center justify-center gap-6 text-xs font-semibold text-slate-400">
-              <div className="flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-emerald-400 text-[16px]">check_circle</span>
-                <span>14 Jours d'essai complet</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-emerald-400 text-[16px]">check_circle</span>
-                <span>Sans carte bancaire</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-emerald-400 text-[16px]">check_circle</span>
-                <span>Tarifs en Dinars Tunisiens (TND)</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-emerald-400 text-[16px]">check_circle</span>
-                <span>Déploiement en &lt; 1 heure</span>
-              </div>
+            {/* Micro Highlights */}
+            <div className="flex flex-wrap items-center justify-center gap-6 pt-4 text-xs font-bold text-slate-400">
+              <span className="flex items-center gap-1.5"><span className="text-emerald-400">✓</span> Sans Carte Bancaire</span>
+              <span className="flex items-center gap-1.5"><span className="text-emerald-400">✓</span> Déploiement en 48 Heures</span>
+              <span className="flex items-center gap-1.5"><span className="text-emerald-400">✓</span> Support Technique Local en Tunisie</span>
             </div>
           </div>
 
-          {/* INTERACTIVE LIVE WORKSHOP SHOWCASE */}
-          <div className="mt-14 max-w-5xl mx-auto">
-            <div className="rounded-3xl border border-slate-800 bg-slate-900/90 shadow-2xl overflow-hidden backdrop-blur-xl">
-              
-              {/* Window Bar & Tabs */}
-              <div className="px-6 py-4 border-b border-slate-800 bg-slate-950/60 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex gap-1.5">
-                    <div className="w-3 h-3 rounded-full bg-rose-500/80"></div>
-                    <div className="w-3 h-3 rounded-full bg-amber-500/80"></div>
-                    <div className="w-3 h-3 rounded-full bg-emerald-500/80"></div>
-                  </div>
-                  <span className="text-xs font-black text-slate-400 ml-2">FactoryFlow Live Demo — Usine Active</span>
-                </div>
+          {/* 🌟 HERO SHOWCASE WITH REAL INDUSTRIAL PHOTOGRAPHY & FLOATING METRIC CARDS */}
+          <div className="mt-14 relative max-w-5xl mx-auto rounded-3xl p-2 bg-gradient-to-b from-blue-500/20 via-slate-800/40 to-slate-900/60 border border-slate-700/80 shadow-2xl backdrop-blur-xl group">
+            
+            <div className="relative rounded-2xl overflow-hidden aspect-[16/9] border border-slate-800 bg-slate-950">
+              <img 
+                src="/images/factory_hero_smart_plant.jpg" 
+                alt="Usine connectée FactoryFlow TN" 
+                className="w-full h-full object-cover object-center group-hover:scale-[1.02] transition-transform duration-700"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent"></div>
 
-                {/* Tab Switcher */}
-                <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs font-bold">
-                  <button
-                    onClick={() => setActiveTab('tablet')}
-                    className={`px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
-                      activeTab === 'tablet' ? 'bg-blue-600 text-white shadow-md font-black' : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-[16px]">tablet</span>
-                    <span>1. Tablette Atelier</span>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('trs')}
-                    className={`px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
-                      activeTab === 'trs' ? 'bg-blue-600 text-white shadow-md font-black' : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-[16px]">precision_manufacturing</span>
-                    <span>2. Suivi TRS (OEE)</span>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('bom')}
-                    className={`px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
-                      activeTab === 'bom' ? 'bg-blue-600 text-white shadow-md font-black' : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-[16px]">inventory_2</span>
-                    <span>3. Stocks & Bobines</span>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('pareto')}
-                    className={`px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
-                      activeTab === 'pareto' ? 'bg-blue-600 text-white shadow-md font-black' : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-[16px]">delete_sweep</span>
-                    <span>4. Pareto Rebuts</span>
-                  </button>
+              {/* Floating Top Status Badge */}
+              <div className="absolute top-4 left-4 sm:top-6 sm:left-6 flex items-center gap-3 p-3 sm:px-4 sm:py-2.5 rounded-2xl bg-slate-900/90 border border-slate-700/80 backdrop-blur-md shadow-2xl">
+                <span className="w-3 h-3 rounded-full bg-emerald-400 animate-ping"></span>
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ligne de Production 04</p>
+                  <p className="text-xs sm:text-sm font-black text-white">TRS Global : <span className="text-emerald-400 font-mono">91.4%</span> (Performance Optimale)</p>
                 </div>
               </div>
 
-              {/* TAB 1: Live Interactive Tablet Terminal */}
-              {activeTab === 'tablet' && (
-                <div className="p-6 sm:p-8 space-y-6">
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-950 p-4 rounded-2xl border border-slate-800">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-                        <span className="material-symbols-outlined">badge</span>
-                      </div>
-                      <div>
-                        <span className="text-xs text-slate-400 font-bold uppercase block">Opérateur Connecté</span>
-                        <span className="font-black text-white text-sm">Mohamed Amine (Code PIN: 1234)</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <span className="px-3 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/30 rounded-lg text-xs font-black uppercase">
-                        Machine : Ligne Bobineuse M01
-                      </span>
-                      <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-black uppercase flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                        En Marche
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Production Stats */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800">
-                      <span className="text-xs font-bold text-slate-400 uppercase">Pièces Conformes</span>
-                      <p className="text-3xl font-black text-emerald-400 mt-1">{simGoodCount} <span className="text-xs text-slate-500">pcs</span></p>
-                      <div className="mt-3 flex gap-1.5">
-                        <button
-                          onClick={() => setSimGoodCount(c => c + 1)}
-                          className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-lg"
-                        >
-                          +1
-                        </button>
-                        <button
-                          onClick={() => setSimGoodCount(c => c + 5)}
-                          className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-lg"
-                        >
-                          +5
-                        </button>
-                        <button
-                          onClick={() => setSimGoodCount(c => c + 36)}
-                          className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-lg"
-                        >
-                          +36 (+1 Carton)
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800">
-                      <span className="text-xs font-bold text-slate-400 uppercase">Rebuts / Déchets</span>
-                      <p className="text-3xl font-black text-rose-400 mt-1">{simScrapCount} <span className="text-xs text-slate-500">pcs</span></p>
-                      <div className="mt-3 flex gap-1.5">
-                        <button
-                          onClick={() => setSimScrapCount(c => c + 1)}
-                          className="px-2.5 py-1 bg-rose-600 hover:bg-rose-500 text-white text-xs font-black rounded-lg"
-                        >
-                          +1 Rebut
-                        </button>
-                        <button
-                          onClick={() => setSimScrapCount(c => c + 3)}
-                          className="px-2.5 py-1 bg-rose-600 hover:bg-rose-500 text-white text-xs font-black rounded-lg"
-                        >
-                          +3 Défaut
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800">
-                      <span className="text-xs font-bold text-slate-400 uppercase">Colisage Carton (Pièces/Carton)</span>
-                      <p className="text-2xl font-black text-blue-400 mt-1">{simColisage} <span className="text-xs text-slate-500">pcs/carton</span></p>
-                      <div className="mt-3 flex gap-1">
-                        {[24, 36, 48, 72].map(qty => (
-                          <button
-                            key={qty}
-                            onClick={() => setSimColisage(qty)}
-                            className={`px-2 py-1 rounded-lg text-xs font-black transition-all ${
-                              simColisage === qty ? 'bg-blue-600 text-white' : 'bg-slate-900 text-slate-400 hover:bg-slate-800'
-                            }`}
-                          >
-                            {qty}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  <p className="text-xs text-slate-400 text-center italic">
-                    💡 Cliquez sur les boutons ci-dessus pour tester l'enregistrement instantané et la génération de cartons en direct.
-                  </p>
+              {/* Floating Bottom Metric Badges */}
+              <div className="absolute bottom-4 left-4 right-4 sm:bottom-6 sm:left-6 sm:right-6 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-3 sm:p-4 rounded-xl bg-slate-950/85 border border-slate-800/80 backdrop-blur-md">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase">Pièces Conformes</p>
+                  <p className="text-base sm:text-xl font-black text-white font-mono mt-0.5">14,832 <span className="text-xs text-emerald-400 font-bold">+12%</span></p>
                 </div>
-              )}
-
-              {/* TAB 2: Live OEE / TRS Gauge */}
-              {activeTab === 'trs' && (
-                <div className="p-6 sm:p-8 space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 text-center">
-                      <span className="text-xs font-bold text-slate-400 uppercase">TRS / OEE Global</span>
-                      <p className="text-4xl font-black text-emerald-400 mt-2">87.4%</p>
-                      <span className="text-[11px] text-emerald-500 font-bold">Standard Industriel Classe A</span>
-                    </div>
-
-                    <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 text-center">
-                      <span className="text-xs font-bold text-slate-400 uppercase">Disponibilité (D)</span>
-                      <p className="text-3xl font-black text-blue-400 mt-2">92.1%</p>
-                      <span className="text-[11px] text-slate-400">Temps net de marche</span>
-                    </div>
-
-                    <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 text-center">
-                      <span className="text-xs font-bold text-slate-400 uppercase">Performance (P)</span>
-                      <p className="text-3xl font-black text-indigo-400 mt-2">96.8%</p>
-                      <span className="text-[11px] text-slate-400">Cadence nominale atteinte</span>
-                    </div>
-
-                    <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 text-center">
-                      <span className="text-xs font-bold text-slate-400 uppercase">Qualité (Q)</span>
-                      <p className="text-3xl font-black text-purple-400 mt-2">98.2%</p>
-                      <span className="text-[11px] text-slate-400">Taux de pièces bonnes</span>
-                    </div>
-                  </div>
-
-                  <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-3">
-                    <span className="text-xs font-bold text-slate-400 uppercase block">Journal des Arrêts Machines du Shift</span>
-                    <div className="space-y-2 text-xs">
-                      <div className="flex justify-between p-2.5 bg-slate-900 rounded-xl border border-slate-800">
-                        <span className="text-amber-400 font-bold">Panne Électrique M02 (18 min)</span>
-                        <span className="text-slate-400">Résolu par Équipe Maintenance</span>
-                      </div>
-                      <div className="flex justify-between p-2.5 bg-slate-900 rounded-xl border border-slate-800">
-                        <span className="text-blue-400 font-bold">Changement de Bobine Mère (12 min)</span>
-                        <span className="text-slate-400">Procédure standard</span>
-                      </div>
-                    </div>
-                  </div>
+                <div className="p-3 sm:p-4 rounded-xl bg-slate-950/85 border border-slate-800/80 backdrop-blur-md">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase">Taux de Rebuts</p>
+                  <p className="text-base sm:text-xl font-black text-emerald-400 font-mono mt-0.5">0.82% <span className="text-xs text-slate-400 font-normal">(-74%)</span></p>
                 </div>
-              )}
-
-              {/* TAB 3: BOM Simulator */}
-              {activeTab === 'bom' && (
-                <div className="p-6 sm:p-8 space-y-6">
-                  <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-4">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h4 className="text-sm font-black text-white">Nomenclature : Ruban Adhésif Brun 48mm x 100m</h4>
-                        <p className="text-xs text-slate-400">Recette de découpe et de bobinage multi-étapes</p>
-                      </div>
-                      <span className="px-3 py-1 bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 rounded-lg text-xs font-bold">
-                        BOM Active
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                      <div className="p-3 bg-slate-900 rounded-xl border border-slate-800">
-                        <span className="text-slate-400 block">Bobine Mère (Jumbo) :</span>
-                        <strong className="text-white text-sm">BOPP 1280mm x 4000m</strong>
-                        <span className="text-emerald-400 block mt-1">26 rouleaux finis / refente</span>
-                      </div>
-                      <div className="p-3 bg-slate-900 rounded-xl border border-slate-800">
-                        <span className="text-slate-400 block">Mandrins Carton 3 pouces :</span>
-                        <strong className="text-white text-sm">Tube Kraft 48mm</strong>
-                        <span className="text-blue-400 block mt-1">1 mandrin / rouleau</span>
-                      </div>
-                      <div className="p-3 bg-slate-900 rounded-xl border border-slate-800">
-                        <span className="text-slate-400 block">Emballage & Étui :</span>
-                        <strong className="text-white text-sm">Carton Cannelure B</strong>
-                        <span className="text-purple-400 block mt-1">1 carton pour 36 rouleaux</span>
-                      </div>
-                    </div>
-                  </div>
+                <div className="p-3 sm:p-4 rounded-xl bg-slate-950/85 border border-slate-800/80 backdrop-blur-md">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase">Cartons Flashés</p>
+                  <p className="text-base sm:text-xl font-black text-cyan-400 font-mono mt-0.5">412 Cartons</p>
                 </div>
-              )}
-
-              {/* TAB 4: Pareto Rebuts */}
-              {activeTab === 'pareto' && (
-                <div className="p-6 sm:p-8 space-y-6">
-                  <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-4">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h4 className="text-sm font-black text-white">Diagnostic Pareto des Rebuts (Mois en Cours)</h4>
-                        <p className="text-xs text-slate-400">80% des pertes financières proviennent des 2 causes majeures</p>
-                      </div>
-                      <span className="text-xs font-black text-rose-400 bg-rose-500/10 px-3 py-1 rounded-lg border border-rose-500/20">
-                        Pertes Estimées : 840 TND
-                      </span>
-                    </div>
-
-                    <div className="space-y-3">
-                      <div>
-                        <div className="flex justify-between text-xs font-bold mb-1">
-                          <span className="text-slate-300">1. Décalage Centrage Bobineuse (54% des pertes)</span>
-                          <span className="text-rose-400">453 TND</span>
-                        </div>
-                        <div className="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
-                          <div className="h-full bg-rose-500 rounded-full" style={{ width: '54%' }} />
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between text-xs font-bold mb-1">
-                          <span className="text-slate-300">2. Épaisseur Colle Non-Conforme (28% des pertes)</span>
-                          <span className="text-amber-400">235 TND</span>
-                        </div>
-                        <div className="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
-                          <div className="h-full bg-amber-500 rounded-full" style={{ width: '28%' }} />
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between text-xs font-bold mb-1">
-                          <span className="text-slate-300">3. Casse Film Amorçage (18% des pertes)</span>
-                          <span className="text-blue-400">152 TND</span>
-                        </div>
-                        <div className="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
-                          <div className="h-full bg-blue-500 rounded-full" style={{ width: '18%' }} />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                <div className="p-3 sm:p-4 rounded-xl bg-slate-950/85 border border-slate-800/80 backdrop-blur-md">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase">Opérateurs Actifs</p>
+                  <p className="text-base sm:text-xl font-black text-blue-400 font-mono mt-0.5">24 Connectés</p>
                 </div>
-              )}
+              </div>
 
+            </div>
+          </div>
+
+          {/* 🏭 INDUSTRIAL SECTORS MARQUEE */}
+          <div className="mt-16 pt-8 border-t border-slate-900">
+            <p className="text-center text-xs font-black uppercase tracking-widest text-slate-500 mb-6">
+              Secteurs Industriels Équipés en Tunisie
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              {industrialSectors.map((sec, i) => (
+                <div key={i} className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800/80 flex flex-col items-center text-center gap-1.5 hover:border-blue-500/40 hover:bg-slate-900 transition-all">
+                  <span className="material-symbols-outlined text-blue-400 text-[24px]">{sec.icon}</span>
+                  <span className="text-xs font-bold text-slate-200">{sec.name}</span>
+                  <span className="text-[9px] font-black text-emerald-400 uppercase">{sec.badge}</span>
+                </div>
+              ))}
             </div>
           </div>
 
         </div>
       </section>
 
-      {/* INDUSTRIAL SECTORS STRIP */}
-      <section className="py-10 border-y border-slate-800/80 bg-slate-900/40">
+      {/* 🎮 INTERACTIVE LIVE MES STUDIO (TABLETTE, SCANNER, SALLE DE CONTRÔLE) */}
+      <section className="py-20 bg-slate-900/60 border-b border-slate-900 relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-xs font-black uppercase tracking-widest text-slate-500 mb-6">
-            Déployé dans les zones industrielles de Ben Arous, Sousse, Sfax, Nabeul et Bizerte
-          </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-            {industrialSectors.map((s, idx) => (
-              <div key={idx} className="flex items-center gap-2 p-3 bg-slate-900/80 rounded-xl border border-slate-800 text-slate-300 text-xs font-bold justify-center">
-                <span className="material-symbols-outlined text-[18px] text-blue-400">{s.icon}</span>
-                <span>{s.name}</span>
-              </div>
-            ))}
+          
+          <div className="text-center max-w-3xl mx-auto space-y-4 mb-12">
+            <span className="text-xs font-black uppercase tracking-widest text-blue-400 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/30">
+              Expérience Interactive
+            </span>
+            <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
+              Testez l'Écosystème FactoryFlow
+            </h2>
+            <p className="text-slate-400 text-sm sm:text-base font-medium">
+              Découvrez la simplicité d'utilisation pour vos ouvriers, contrôleurs qualité et managers d'usine.
+            </p>
           </div>
+
+          {/* Tabs Selector */}
+          <div className="flex flex-wrap justify-center gap-2 mb-8 max-w-2xl mx-auto p-1.5 rounded-2xl bg-slate-950 border border-slate-800">
+            <button
+              onClick={() => setActiveTab('tablet')}
+              className={`flex-1 py-3 px-4 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${
+                activeTab === 'tablet'
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-900'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[18px]">tablet</span>
+              <span>Tablette Atelier</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('scanner')}
+              className={`flex-1 py-3 px-4 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${
+                activeTab === 'scanner'
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-900'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[18px]">qr_code_scanner</span>
+              <span>Scanner Mobile QR</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('trs')}
+              className={`flex-1 py-3 px-4 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${
+                activeTab === 'trs'
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-900'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[18px]">monitoring</span>
+              <span>Supervision TRS</span>
+            </button>
+          </div>
+
+          {/* Interactive Stage Panel */}
+          <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl">
+            {activeTab === 'tablet' && (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                <div className="lg:col-span-6 rounded-2xl overflow-hidden border border-slate-800 shadow-xl relative aspect-[4/3]">
+                  <img src="/images/shopfloor_tablet_operator.jpg" alt="Tablette Atelier" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent"></div>
+                  <div className="absolute bottom-4 left-4 right-4 bg-slate-900/90 backdrop-blur-md p-4 rounded-xl border border-slate-700/80">
+                    <p className="text-xs font-bold text-slate-300">📱 Verrouillé sur la machine : <span className="text-white font-black">EXTRUDEUSE-02</span></p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">Équipe connectée : Ahmed K. & Mohamed A. (Code PIN vérifié)</p>
+                  </div>
+                </div>
+
+                <div className="lg:col-span-6 space-y-6">
+                  <div>
+                    <span className="text-xs font-black text-emerald-400 uppercase tracking-widest">Simulateur Live</span>
+                    <h3 className="text-2xl font-black text-white mt-1">Saisie Rapide & Déclaration Carton</h3>
+                    <p className="text-slate-400 text-xs sm:text-sm mt-2">
+                      Testez le comptage tactile en direct. Chaque fois que le carton est plein, le système génère instantanément l'étiquette QR.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
+                      <p className="text-xs font-bold text-slate-400">Pièces Conformes</p>
+                      <p className="text-3xl font-black text-emerald-400 font-mono mt-1">{simGoodCount}</p>
+                      <div className="flex gap-2 mt-3">
+                        <button onClick={() => setSimGoodCount(prev => prev + 1)} className="flex-1 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 font-bold rounded-lg text-xs">+1</button>
+                        <button onClick={() => setSimGoodCount(prev => prev + 10)} className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs">+10</button>
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
+                      <p className="text-xs font-bold text-slate-400">Rebuts / Chutes</p>
+                      <p className="text-3xl font-black text-rose-400 font-mono mt-1">{simScrapCount}</p>
+                      <div className="flex gap-2 mt-3">
+                        <button onClick={() => setSimScrapCount(prev => prev + 1)} className="flex-1 py-1.5 bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 font-bold rounded-lg text-xs">+1</button>
+                        <button onClick={() => setSimScrapCount(0)} className="flex-1 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-lg text-xs">Reset</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Generated Carton Status */}
+                  <div className="p-4 rounded-2xl bg-blue-950/40 border border-blue-800/40 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-blue-300">Cartons Générés ({simColisage} pcs/ctn) :</p>
+                      <p className="text-lg font-black text-white font-mono mt-0.5">{Math.floor(simGoodCount / simColisage)} Cartons Complets + {simGoodCount % simColisage} en cours</p>
+                    </div>
+                    <span className="material-symbols-outlined text-3xl text-blue-400">qr_code_2</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'scanner' && (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                <div className="lg:col-span-6 rounded-2xl overflow-hidden border border-slate-800 shadow-xl relative aspect-[4/3]">
+                  <img src="/images/quality_scanner_inspection.jpg" alt="Scanner Mobile QR" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent"></div>
+                  <div className="absolute bottom-4 left-4 right-4 bg-slate-900/90 backdrop-blur-md p-4 rounded-xl border border-slate-700/80">
+                    <p className="text-xs font-bold text-emerald-400">⚡ Flash QR Code instantané (Caméra Smartphone / Douchette)</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">Validation Qualité & Entrée en Stock automatique</p>
+                  </div>
+                </div>
+
+                <div className="lg:col-span-6 space-y-6">
+                  <div>
+                    <span className="text-xs font-black text-cyan-400 uppercase tracking-widest">Traçabilité Sans Papier</span>
+                    <h3 className="text-2xl font-black text-white mt-1">Validation Qualité & Expédition</h3>
+                    <p className="text-slate-400 text-xs sm:text-sm mt-2">
+                      Flashez n'importe quel carton produit pour vérifier son lot, son opérateur et sa conformité avant mise en stock.
+                    </p>
+                  </div>
+
+                  <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3 font-mono text-xs">
+                    <div className="flex justify-between pb-2 border-b border-slate-800">
+                      <span className="text-slate-400">Carton N° :</span>
+                      <span className="font-bold text-white">CTN-2026-0816-042</span>
+                    </div>
+                    <div className="flex justify-between pb-2 border-b border-slate-800">
+                      <span className="text-slate-400">Ordre de Fabrication :</span>
+                      <span className="font-bold text-blue-400">OF-2608-019 (Adpro Pack)</span>
+                    </div>
+                    <div className="flex justify-between pb-2 border-b border-slate-800">
+                      <span className="text-slate-400">Contrôle Qualité :</span>
+                      <span className="font-bold text-emerald-400">CONFORME (Passé)</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Emplacement Stock :</span>
+                      <span className="font-bold text-amber-400">Entrepôt A / Allée 3 / R-12</span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5">
+                      <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                      Valider Conforme
+                    </button>
+                    <button className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5">
+                      <span className="material-symbols-outlined text-[18px]">warehouse</span>
+                      Mise en Stock
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'trs' && (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                <div className="lg:col-span-6 rounded-2xl overflow-hidden border border-slate-800 shadow-xl relative aspect-[4/3]">
+                  <img src="/images/smart_factory_control_room.jpg" alt="Salle de Contrôle TRS" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent"></div>
+                  <div className="absolute bottom-4 left-4 right-4 bg-slate-900/90 backdrop-blur-md p-4 rounded-xl border border-slate-700/80">
+                    <p className="text-xs font-bold text-blue-400">📊 Suivi TRS (OEE) en Temps Réel</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">Disponibilité, Performance de cadence et Taux de Qualité</p>
+                  </div>
+                </div>
+
+                <div className="lg:col-span-6 space-y-6">
+                  <div>
+                    <span className="text-xs font-black text-indigo-400 uppercase tracking-widest">Indicateurs Lean Manufacturing</span>
+                    <h3 className="text-2xl font-black text-white mt-1">Calcul Automatique du TRS (OEE)</h3>
+                    <p className="text-slate-400 text-xs sm:text-sm mt-2">
+                      Fini les calculs manuels sur Excel en fin de mois. Visualisez instantanément les arrêts de production et les goulots d'étranglement.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 text-center">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase">Disponibilité</p>
+                      <p className="text-xl font-black text-emerald-400 font-mono mt-1">94.2%</p>
+                    </div>
+                    <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 text-center">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase">Performance</p>
+                      <p className="text-xl font-black text-blue-400 font-mono mt-1">92.0%</p>
+                    </div>
+                    <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 text-center">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase">Qualité</p>
+                      <p className="text-xl font-black text-cyan-400 font-mono mt-1">99.1%</p>
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-900/40 to-indigo-900/40 border border-blue-700/50 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-blue-300">TRS Global Usine :</p>
+                      <p className="text-2xl font-black text-white font-mono">85.8% <span className="text-xs text-emerald-400 font-bold">(Classe Mondiale)</span></p>
+                    </div>
+                    <span className="material-symbols-outlined text-4xl text-blue-400">trending_up</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
         </div>
       </section>
 
-      {/* FEATURES GRID SECTION */}
+      {/* 🧩 CORE FEATURES GRID WITH RICH VISUALS */}
       <section className="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
-          <span className="text-xs font-black text-blue-400 uppercase tracking-widest bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">
-            Plateforme Complète
+        <div className="text-center max-w-3xl mx-auto space-y-4 mb-16">
+          <span className="text-xs font-black uppercase tracking-widest text-blue-400 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/30">
+            Fonctionnalités Clés
           </span>
-          <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-white">
-            Tous les modules indispensables pour piloter votre usine
+          <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
+            Tout pour Piloter votre Production
           </h2>
-          <p className="text-base text-slate-400 font-medium">
-            Une suite d'outils unifiée conçue spécifiquement pour le terrain et la direction de production.
+          <p className="text-slate-400 text-sm sm:text-base font-medium">
+            Une suite modulaire complète pensée pour les contraintes réelles des ateliers de fabrication en Tunisie.
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {features.map((feat, idx) => (
+          {features.map((feat, index) => (
             <div
-              key={idx}
-              className="p-8 rounded-3xl bg-slate-900/60 border border-slate-800 hover:border-slate-700 transition-all hover:-translate-y-1 group relative overflow-hidden flex flex-col justify-between"
+              key={index}
+              className="p-6 rounded-3xl bg-slate-900/70 border border-slate-800 hover:border-slate-700 transition-all hover:-translate-y-1 group relative overflow-hidden flex flex-col"
             >
-              <div className="space-y-4">
-                <div className={`w-12 h-12 rounded-2xl bg-gradient-to-tr ${feat.color} flex items-center justify-center text-white shadow-lg`}>
-                  <span className="material-symbols-outlined text-[24px]">{feat.icon}</span>
-                </div>
-                <span className="text-[11px] font-black text-blue-400 uppercase tracking-wider block">{feat.badge}</span>
-                <h3 className="text-xl font-black text-white group-hover:text-blue-300 transition-colors">{feat.title}</h3>
-                <p className="text-sm text-slate-400 font-medium leading-relaxed">{feat.description}</p>
+              <div className="rounded-2xl overflow-hidden aspect-[16/10] mb-5 border border-slate-800 bg-slate-950">
+                <img src={feat.image} alt={feat.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
               </div>
-              <div className="pt-6">
-                <Link to="/features" className="text-xs font-black text-blue-400 hover:text-blue-300 inline-flex items-center gap-1">
-                  En savoir plus →
-                </Link>
+
+              <div className="flex items-center justify-between mb-3">
+                <div className={`w-10 h-10 rounded-xl bg-gradient-to-tr ${feat.color} flex items-center justify-center text-white shadow-md`}>
+                  <span className="material-symbols-outlined text-[22px]">{feat.icon}</span>
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                  {feat.badge}
+                </span>
+              </div>
+
+              <h3 className="text-lg font-black text-white mb-2">{feat.title}</h3>
+              <p className="text-xs sm:text-sm text-slate-400 leading-relaxed mt-auto">
+                {feat.description}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 💰 INTERACTIVE ROI & SAVINGS CALCULATOR (IN TND) */}
+      <section className="py-20 bg-slate-900/80 border-y border-slate-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            <div className="lg:col-span-6 space-y-6">
+              <span className="text-xs font-black uppercase tracking-widest text-emerald-400 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30">
+                Calculateur de Rentabilité (ROI)
+              </span>
+              <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
+                Combien FactoryFlow va faire Économiser à votre Usine ?
+              </h2>
+              <p className="text-slate-300 text-sm sm:text-base leading-relaxed">
+                En digitalisant les déclarations et en identifiant les micro-arrêts en direct, nos clients réduisent leurs rebuts de 25% à 40% dès le premier mois.
+              </p>
+
+              {/* Sliders */}
+              <div className="space-y-5 pt-4">
+                <div>
+                  <div className="flex justify-between text-xs font-bold text-slate-300 mb-2">
+                    <span>Nombre de Machines de Production :</span>
+                    <span className="text-blue-400 font-mono text-base font-black">{calcMachines} Machines</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={1}
+                    max={20}
+                    value={calcMachines}
+                    onChange={(e) => setCalcMachines(Number(e.target.value))}
+                    className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-xs font-bold text-slate-300 mb-2">
+                    <span>Équipes / Shifts par jour :</span>
+                    <span className="text-blue-400 font-mono text-base font-black">{calcShifts} Équipes ({calcShifts * 8}h/j)</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={1}
+                    max={3}
+                    value={calcShifts}
+                    onChange={(e) => setCalcShifts(Number(e.target.value))}
+                    className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-xs font-bold text-slate-300 mb-2">
+                    <span>Coût moyen estimé des rebuts / jour / machine :</span>
+                    <span className="text-rose-400 font-mono text-base font-black">{calcScrapCost} DT / jour</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={50}
+                    max={500}
+                    step={10}
+                    value={calcScrapCost}
+                    onChange={(e) => setCalcScrapCost(Number(e.target.value))}
+                    className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-rose-600"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Results Card */}
+            <div className="lg:col-span-6">
+              <div className="p-8 rounded-3xl bg-gradient-to-b from-slate-900 to-slate-950 border border-blue-500/30 shadow-2xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-6">
+                  Impact Financier Estimé sur 1 Mois
+                </h3>
+
+                <div className="space-y-4">
+                  <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 flex justify-between items-center">
+                    <span className="text-xs font-bold text-slate-400">Pertes de Rebuts Actuelles</span>
+                    <span className="text-lg font-black text-rose-400 font-mono">{monthlyScrapLoss.toLocaleString('fr-FR')} TND</span>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 flex justify-between items-center">
+                    <span className="text-xs font-bold text-slate-400">Économies Estimées (-32% rebuts)</span>
+                    <span className="text-lg font-black text-emerald-400 font-mono">+{estimatedSavings.toLocaleString('fr-FR')} TND / mois</span>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 flex justify-between items-center">
+                    <span className="text-xs font-bold text-slate-400">Abonnement FactoryFlow TN</span>
+                    <span className="text-sm font-bold text-slate-300 font-mono">{planCost} TND / mois</span>
+                  </div>
+
+                  <div className="p-6 rounded-2xl bg-gradient-to-r from-emerald-950/60 to-blue-950/60 border border-emerald-500/40 mt-4">
+                    <p className="text-xs font-black text-emerald-300 uppercase tracking-wider">Gain Net Mensuel Estimé :</p>
+                    <p className="text-3xl sm:text-4xl font-black text-emerald-400 font-mono mt-1">
+                      +{netMonthlyGain.toLocaleString('fr-FR')} <span className="text-lg font-sans text-white">TND / mois</span>
+                    </p>
+                    <p className="text-xs font-bold text-slate-300 mt-2">
+                      ⚡ Rentabilisé dès les <span className="text-emerald-300 font-black">premiers {Math.max(3, Math.round(30 / roiMultiplier))} jours</span> d'utilisation !
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-6 text-center">
+                  <Link
+                    to="/signup?plan=professional"
+                    className="inline-flex items-center justify-center gap-2 w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm rounded-xl shadow-lg shadow-emerald-600/30 transition-all"
+                  >
+                    <span>Commencer à Économiser dès Aujourd'hui</span>
+                    <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      {/* 🗣️ TUNISIAN TESTIMONIALS */}
+      <section className="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center max-w-3xl mx-auto space-y-4 mb-16">
+          <span className="text-xs font-black uppercase tracking-widest text-blue-400 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/30">
+            Témoignages Industriels
+          </span>
+          <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
+            Ils Digitalisent Leurs Lignes avec Nous
+          </h2>
+          <p className="text-slate-400 text-sm sm:text-base font-medium">
+            Découvrez comment les directeurs d'usine en Tunisie transforment leur productivité au quotidien.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {testimonials.map((t, index) => (
+            <div
+              key={index}
+              className="p-8 rounded-3xl bg-slate-900/60 border border-slate-800 flex flex-col justify-between relative"
+            >
+              <div className="text-blue-500 text-4xl font-serif">“</div>
+              <p className="text-slate-300 text-sm leading-relaxed mb-6 font-medium">
+                {t.quote}
+              </p>
+              <div className="flex items-center gap-3 pt-4 border-t border-slate-800/80">
+                <div className="w-10 h-10 rounded-full bg-blue-600/20 text-blue-400 font-black text-xs flex items-center justify-center border border-blue-500/30">
+                  {t.logo}
+                </div>
+                <div>
+                  <p className="text-xs font-black text-white">{t.author}</p>
+                  <p className="text-[11px] text-slate-400 font-medium">{t.role}</p>
+                  <p className="text-[10px] text-blue-400 font-semibold">{t.location}</p>
+                </div>
               </div>
             </div>
           ))}
         </div>
       </section>
 
-      {/* INTERACTIVE ROI CALCULATOR SECTION */}
-      <section className="py-20 bg-gradient-to-b from-slate-900/80 to-slate-950 border-y border-slate-800">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          
-          <div className="text-center max-w-2xl mx-auto mb-12 space-y-3">
-            <span className="text-xs font-black text-emerald-400 uppercase tracking-widest bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
-              Calculateur de Rentabilité
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-black text-white">Calculez vos Économies Mensuelles en TND</h2>
-            <p className="text-sm text-slate-400 font-medium">
-              Voyez combien FactoryFlow TN vous fait économiser en réduisant les rebuts et les temps d'arrêt.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center bg-slate-900 p-8 sm:p-12 rounded-3xl border border-slate-800 shadow-2xl">
-            
-            {/* Sliders */}
-            <div className="lg:col-span-7 space-y-6">
-              
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <label className="text-xs font-black text-slate-300 uppercase">Nombre de Machines de Production :</label>
-                  <span className="px-3 py-1 bg-blue-600 text-white font-black text-sm rounded-lg">{calcMachines} Machines</span>
-                </div>
-                <input
-                  type="range"
-                  min="1"
-                  max="20"
-                  value={calcMachines}
-                  onChange={(e) => setCalcMachines(Number(e.target.value))}
-                  className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                />
-              </div>
-
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <label className="text-xs font-black text-slate-300 uppercase">Équipes de Travail (Shifts) :</label>
-                  <span className="px-3 py-1 bg-indigo-600 text-white font-black text-sm rounded-lg">{calcShifts} Équipes / Jour</span>
-                </div>
-                <input
-                  type="range"
-                  min="1"
-                  max="3"
-                  value={calcShifts}
-                  onChange={(e) => setCalcShifts(Number(e.target.value))}
-                  className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                />
-              </div>
-
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <label className="text-xs font-black text-slate-300 uppercase">Coût Estimé des Rebuts & Déchets par Machine :</label>
-                  <span className="px-3 py-1 bg-purple-600 text-white font-black text-sm rounded-lg">{calcScrapCost} TND / jour</span>
-                </div>
-                <input
-                  type="range"
-                  min="50"
-                  max="500"
-                  step="25"
-                  value={calcScrapCost}
-                  onChange={(e) => setCalcScrapCost(Number(e.target.value))}
-                  className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500"
-                />
-              </div>
-
-            </div>
-
-            {/* Results Box */}
-            <div className="lg:col-span-5 bg-gradient-to-br from-blue-900/50 via-indigo-900/40 to-slate-950 p-6 sm:p-8 rounded-2xl border-2 border-blue-500/40 text-center space-y-4 shadow-xl">
-              <span className="text-xs font-bold text-blue-300 uppercase tracking-wider block">Économies Nettes Estimées</span>
-              <div className="text-4xl sm:text-5xl font-black text-white tracking-tight">
-                +{estimatedSavings.toLocaleString()} <span className="text-lg text-blue-400 font-bold">TND / mois</span>
-              </div>
-              <p className="text-xs text-slate-300 font-medium">
-                Soit un retour sur investissement estimé de <strong className="text-emerald-400 font-black">{roiMultiplier}x</strong> le coût de votre abonnement ({planCost} TND/mois).
-              </p>
-              <div className="pt-2">
-                <Link
-                  to="/signup?plan=professional"
-                  className="w-full py-3.5 bg-white hover:bg-slate-100 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl shadow-lg transition-all inline-block"
-                >
-                  Activer mon Usine et Réduire mes Pertes →
-                </Link>
-              </div>
-            </div>
-
-          </div>
-
-        </div>
-      </section>
-
-      {/* COMPARISON TABLE: OLD METHOD VS FACTORYFLOW */}
-      <section className="py-24 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
-          <h2 className="text-3xl font-black text-white">Pourquoi les usines abandonnent Excel</h2>
-          <p className="text-sm text-slate-400 font-medium">Comparatif direct entre la gestion artisanale et notre système MES cloud.</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="p-8 rounded-3xl bg-rose-950/20 border border-rose-500/20 space-y-4">
-            <div className="flex items-center gap-2 text-rose-400 font-black text-sm uppercase">
-              <span className="material-symbols-outlined">cancel</span>
-              <span>Méthode Traditionnelle (Papier & Excel)</span>
-            </div>
-            <ul className="space-y-3 text-xs sm:text-sm text-slate-300 font-medium">
-              <li className="flex items-start gap-2">❌ Fiches d'OF manuscrites perdues ou illisibles</li>
-              <li className="flex items-start gap-2">❌ Retard de plusieurs jours sur la connaissance des rebuts</li>
-              <li className="flex items-start gap-2">❌ Erreurs humaines répétées lors de la saisie comptable</li>
-              <li className="flex items-start gap-2">❌ Pas de traçabilité instantanée pour les audits clients</li>
-            </ul>
-          </div>
-
-          <div className="p-8 rounded-3xl bg-emerald-950/20 border border-emerald-500/30 space-y-4 shadow-xl">
-            <div className="flex items-center gap-2 text-emerald-400 font-black text-sm uppercase">
-              <span className="material-symbols-outlined">check_circle</span>
-              <span>Avec FactoryFlow TN (MES Cloud)</span>
-            </div>
-            <ul className="space-y-3 text-xs sm:text-sm text-slate-200 font-medium">
-              <li className="flex items-start gap-2">✅ Saisie tactile opérateur en direct sur tablette atelier</li>
-              <li className="flex items-start gap-2">✅ Calcul automatique du TRS et des arrêts machines</li>
-              <li className="flex items-start gap-2">✅ Étiquetage cartons QR code conforme immédiat</li>
-              <li className="flex items-start gap-2">✅ Export Sage 100 et Odoo sans ressaisie</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      {/* FINAL CALL TO ACTION BANNER */}
+      {/* 🚀 FINAL CALL TO ACTION */}
       <section className="py-20 relative overflow-hidden">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="p-10 sm:p-16 rounded-3xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-700 text-white text-center space-y-6 shadow-2xl relative overflow-hidden">
-            <h2 className="text-3xl sm:text-5xl font-black tracking-tight">
-              Prêt à moderniser la production de votre usine ?
+          <div className="p-10 sm:p-14 rounded-3xl bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 text-center space-y-6 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
+              Prêt à Moderniser votre Atelier ?
             </h2>
-            <p className="text-base text-blue-100 max-w-xl mx-auto font-medium">
-              Rejoignez les usines tunisiennes qui gagnent en productivité chaque jour avec FactoryFlow TN.
+            <p className="text-blue-100 text-sm sm:text-base max-w-2xl mx-auto font-medium">
+              Créez votre compte en 2 minutes, associez vos machines et commencez à déclarer votre production sans aucun frais.
             </p>
-            <div className="pt-2 flex flex-col sm:flex-row justify-center gap-4">
+            <div className="flex flex-col sm:flex-row justify-center gap-4 pt-2">
               <Link
                 to="/signup?plan=professional"
-                className="px-8 py-4 bg-white hover:bg-slate-100 text-blue-900 font-black text-sm rounded-2xl shadow-xl transition-all"
+                className="px-8 py-4 bg-white hover:bg-slate-100 text-blue-900 rounded-2xl font-black text-base shadow-xl transition-all flex items-center justify-center gap-2"
               >
-                Commencer 14 Jours d'Essai Gratuit
+                <span>Démarrer l'Essai Gratuit 14 Jours</span>
+                <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
               </Link>
               <Link
                 to="/contact"
-                className="px-8 py-4 bg-blue-950/60 hover:bg-blue-950 border border-blue-300/30 text-white font-bold text-sm rounded-2xl transition-colors"
+                className="px-8 py-4 bg-blue-950/40 hover:bg-blue-950/60 text-white border border-white/20 rounded-2xl font-bold text-base transition-all flex items-center justify-center gap-2"
               >
-                Contacter notre Équipe Déploiement
+                <span>Prendre Rendez-vous Démo</span>
               </Link>
             </div>
           </div>

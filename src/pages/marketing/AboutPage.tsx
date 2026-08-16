@@ -5,65 +5,88 @@ import { MarketingFooter } from '../../components/marketing/Footer';
 
 export function AboutPage() {
   return (
-    <div className="min-h-screen bg-white text-zinc-900 font-sans">
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-blue-600 selection:text-white">
       <MarketingNavbar />
 
-      <section className="pt-16 pb-20 bg-gradient-to-b from-blue-50/50 via-white to-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
-          
-          <div className="text-center">
-            <span className="text-xs font-black text-blue-600 uppercase tracking-widest bg-blue-100/80 px-3 py-1 rounded-full border border-blue-200">
-              Notre Mission
-            </span>
-            <h1 className="text-3xl sm:text-5xl font-black text-zinc-950 mt-4 tracking-tight">
-              Rendre l'excellence industrielle accessible à chaque usine tunisienne
-            </h1>
-            <p className="text-base sm:text-lg text-zinc-600 font-medium mt-3 leading-relaxed">
-              Nous avons conçu FactoryFlow TN pour résoudre un problème critique : les ERPs traditionnels sont trop complexes, trop chers et inadaptés au quotidien des opérateurs en atelier.
-            </p>
+      {/* Header Section */}
+      <section className="pt-16 pb-16 text-center relative overflow-hidden">
+        <div className="max-w-4xl mx-auto px-4 relative z-10 space-y-4">
+          <span className="text-xs font-black text-blue-400 uppercase tracking-widest bg-blue-500/10 px-4 py-1.5 rounded-full border border-blue-500/30">
+            Notre Mission & Vision
+          </span>
+          <h1 className="text-4xl sm:text-6xl font-black text-white tracking-tight">
+            Accélérer l'Industrie 4.0 en Tunisie 🇹🇳
+          </h1>
+          <p className="text-slate-300 text-base sm:text-lg max-w-2xl mx-auto font-medium">
+            Nous avons créé FactoryFlow TN pour résoudre un problème critique : les logiciels industriels traditionnels sont trop lourds, trop chers et coupés des réalités du terrain.
+          </p>
+        </div>
+      </section>
+
+      {/* Visual & Story Section */}
+      <section className="py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
+        
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+          <div className="lg:col-span-6 rounded-3xl overflow-hidden border border-slate-800 shadow-2xl aspect-[16/10] bg-slate-950">
+            <img 
+              src="/images/smart_factory_control_room.jpg" 
+              alt="Équipe FactoryFlow Tunisie" 
+              className="w-full h-full object-cover"
+            />
           </div>
 
-          <div className="bg-zinc-50 border border-zinc-200 rounded-3xl p-8 sm:p-10 space-y-6">
-            <h2 className="text-2xl font-black text-zinc-900">Pourquoi FactoryFlow TN ?</h2>
-            <p className="text-sm sm:text-base text-zinc-700 leading-relaxed font-medium">
-              Dans la plupart des ateliers de fabrication en Tunisie, la production est encore pilotée par des fiches papier, des tableaux blancs et des fichiers Excel mis à jour avec des jours de retard.
+          <div className="lg:col-span-6 space-y-6">
+            <h2 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
+              Pourquoi FactoryFlow TN ?
+            </h2>
+            <p className="text-slate-300 text-sm sm:text-base leading-relaxed">
+              Dans la majorité des usines tunisiennes, le suivi de production repose encore sur des fiches papier volantes, des tableaux blancs et des fichiers Excel saisis avec des jours de retard.
             </p>
-            <p className="text-sm sm:text-base text-zinc-700 leading-relaxed font-medium">
-              Les directeurs d'usine et responsables de production découvrent les pannes, les dérives de cadence et les taux de rebus excessifs trop tard. Les logiciels ERP occidentaux demandent des mois de configuration et des dizaines de milliers de dinars de licences.
+            <p className="text-slate-300 text-sm sm:text-base leading-relaxed">
+              Les directeurs d'usine et responsables qualité découvrent les dérives de cadence et les surconsommations de matière trop tard.
             </p>
-            <p className="text-sm sm:text-base text-zinc-700 leading-relaxed font-medium">
-              <strong>FactoryFlow TN change la donne :</strong> une application SaaS moderne, hébergée sur le cloud, opérationnelle en quelques minutes sur n'importe quelle tablette du marché, avec une tarification mensuelle claire en Dinars Tunisiens (TND).
+            <p className="text-slate-300 text-sm sm:text-base leading-relaxed">
+              <strong className="text-white">FactoryFlow TN transforme cette dynamique :</strong> un système MES SaaS ultra-réactif, utilisable en atelier sur de simples tablettes Android/iPad, avec codes PIN ouvriers, synchronisation temps réel et tarifs transparents en Dinars Tunisiens (TND).
             </p>
           </div>
+        </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
-            <div className="p-6 bg-white rounded-2xl border border-zinc-200 shadow-xs">
-              <span className="text-3xl font-black text-blue-600">100%</span>
-              <p className="text-xs font-bold text-zinc-800 uppercase mt-2">Atelier Connecté</p>
-              <p className="text-xs text-zinc-500 mt-1">Zéro papier sur les postes de travail</p>
-            </div>
-            <div className="p-6 bg-white rounded-2xl border border-zinc-200 shadow-xs">
-              <span className="text-3xl font-black text-emerald-600">-25%</span>
-              <p className="text-xs font-bold text-zinc-800 uppercase mt-2">Rebuts & Pertes</p>
-              <p className="text-xs text-zinc-500 mt-1">Grâce à l'analyse Pareto instantanée</p>
-            </div>
-            <div className="p-6 bg-white rounded-2xl border border-zinc-200 shadow-xs">
-              <span className="text-3xl font-black text-indigo-600">&lt; 2 min</span>
-              <p className="text-xs font-bold text-zinc-800 uppercase mt-2">Prise en Main</p>
-              <p className="text-xs text-zinc-500 mt-1">Pour les opérateurs machine</p>
-            </div>
+        {/* Core Pillars */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <div className="p-8 bg-slate-900/60 border border-slate-800 rounded-3xl text-center space-y-2">
+            <span className="text-4xl font-black text-blue-400 font-mono">100%</span>
+            <p className="text-sm font-black text-white uppercase tracking-wider">Atelier Connecté</p>
+            <p className="text-xs text-slate-400">Élimination intégrale du papier sur les postes machines</p>
           </div>
+          <div className="p-8 bg-slate-900/60 border border-slate-800 rounded-3xl text-center space-y-2">
+            <span className="text-4xl font-black text-emerald-400 font-mono">-32%</span>
+            <p className="text-sm font-black text-white uppercase tracking-wider">Rebuts & Pertes</p>
+            <p className="text-xs text-slate-400">Grâce à l'analyse Pareto instantanée et alertes pannes</p>
+          </div>
+          <div className="p-8 bg-slate-900/60 border border-slate-800 rounded-3xl text-center space-y-2">
+            <span className="text-4xl font-black text-cyan-400 font-mono">&lt; 48h</span>
+            <p className="text-sm font-black text-white uppercase tracking-wider">Mise en Service</p>
+            <p className="text-xs text-slate-400">Déploiement immédiat sans modification d'infrastructure</p>
+          </div>
+        </div>
 
-          <div className="text-center pt-6">
+        {/* Tunisian Industrial Commitment */}
+        <div className="p-8 sm:p-12 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-6 text-center max-w-4xl mx-auto">
+          <h3 className="text-2xl font-black text-white">Fabriqué en Tunisie, pour l'Industrie Tunisienne 🇹🇳</h3>
+          <p className="text-slate-300 text-sm sm:text-base leading-relaxed">
+            Notre équipe technique et nos ingénieurs support sont basés à Tunis et interviennent directement sur vos sites à Ben Arous, Sfax, Sousse, Bizerte, Nabeul et Zaghouan.
+          </p>
+          <div className="pt-2">
             <Link
               to="/signup?plan=professional"
-              className="inline-flex items-center gap-2 px-8 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl text-sm shadow-lg transition-all"
+              className="inline-flex items-center gap-2 px-8 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-black text-sm rounded-xl shadow-lg transition-all"
             >
-              Rejoindre l'Aventure Industrielle (Essai 14 Jours) →
+              <span>Rejoindre la Communauté Industrielle</span>
+              <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
             </Link>
           </div>
-
         </div>
+
       </section>
 
       <MarketingFooter />
