@@ -1,95 +1,119 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useProductionStore } from '../store/production';
 import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 
 export function Production() {
-  const { sessions, machines, products, operators, loading, fetchInitialData, startSession, updateSessionStatus } = useProductionStore();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newSessionData, setNewSessionData] = useState({
-    machine_id: '',
-    product_id: '',
-    operator_id: '',
-    lot_number: ''
-  });
+  const { sessions, machines, articles, operators, loading, fetchInitialData, setupRealtime, updateSessionStatus } = useProductionStore();
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchInitialData();
-  }, [fetchInitialData]);
+    setupRealtime();
+  }, [fetchInitialData, setupRealtime]);
 
-  const handleStartSession = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newSessionData.machine_id || !newSessionData.product_id || !newSessionData.operator_id) return;
-    
-    await startSession(newSessionData);
-    setIsModalOpen(false);
-    setNewSessionData({ machine_id: '', product_id: '', operator_id: '', lot_number: '' });
+  const getMachine = (id: string | null) => machines.find(m => m.id === id);
+  const getArticleName = (id: string | null) => articles.find(a => a.id === id)?.designation || 'Inconnu';
+
+  const renderOperatorBadges = (session: any) => {
+    let opIds: string[] = [];
+    if (Array.isArray(session.operator_ids) && session.operator_ids.length > 0) {
+      opIds = session.operator_ids;
+    } else if (session.operator_id) {
+      opIds = [session.operator_id];
+    }
+
+    if (opIds.length === 0) return <span className="text-gray-400 italic">Inconnu</span>;
+
+    const names = opIds
+      .map(id => operators.find(o => o.id === id)?.name)
+      .filter(Boolean);
+
+    if (names.length === 0) {
+      return <span>{operators.find(o => o.id === session.operator_id)?.name || 'Opérateur'}</span>;
+    }
+
+    return (
+      <div className="flex flex-wrap gap-1 items-center">
+        {names.map((name, i) => (
+          <span key={i} className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 bg-blue-50 text-blue-800 rounded-md border border-blue-200">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+            {name}
+          </span>
+        ))}
+      </div>
+    );
   };
 
-  const getMachineName = (id: string | null) => machines.find(m => m.id === id)?.name || 'Inconnu';
-  const getProductName = (id: string | null) => products.find(p => p.id === id)?.name || 'Inconnu';
-  const getOperatorName = (id: string | null) => operators.find(o => o.id === id)?.name || 'Inconnu';
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 font-sans">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="font-display text-display-md text-on-background">Production</h1>
-          <p className="font-body-md text-body-md text-on-surface-variant">Gestion et suivi des ordres de fabrication</p>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Suivi de Production</h1>
+          <p className="text-sm text-gray-500 font-medium mt-1">Suivi en temps réel des ordres et des équipes sur machines</p>
         </div>
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="bg-primary text-on-primary hover:bg-primary/90 px-6 py-3 rounded-full font-label-lg font-bold transition-colors card-shadow flex items-center gap-2"
-        >
-          <span className="material-symbols-outlined icon-fill">add</span>
-          Nouvel Ordre
-        </button>
       </div>
 
-      <div className="bg-surface-container-lowest rounded-xl border border-outline-variant card-shadow overflow-hidden">
-        <div className="p-6 border-b border-outline-variant flex justify-between items-center bg-surface-container-low/50">
-          <h3 className="font-headline-md text-headline-md text-on-background">Ordres en cours</h3>
+      <div className="bg-white rounded-xl border border-gray-200 card-shadow overflow-hidden">
+        <div className="p-6 border-b border-gray-200 flex justify-between items-center bg-gray-50/50">
+          <h3 className="font-bold text-gray-900 text-lg">Sessions & Ordres de Fabrication</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-outline-variant bg-surface">
-                <th className="p-4 font-label-md text-label-md text-on-surface-variant font-semibold uppercase tracking-wider">Lot</th>
-                <th className="p-4 font-label-md text-label-md text-on-surface-variant font-semibold uppercase tracking-wider">Machine</th>
-                <th className="p-4 font-label-md text-label-md text-on-surface-variant font-semibold uppercase tracking-wider">Produit</th>
-                <th className="p-4 font-label-md text-label-md text-on-surface-variant font-semibold uppercase tracking-wider">Opérateur</th>
-                <th className="p-4 font-label-md text-label-md text-on-surface-variant font-semibold uppercase tracking-wider">Début</th>
-                <th className="p-4 font-label-md text-label-md text-on-surface-variant font-semibold uppercase tracking-wider">Statut</th>
-                <th className="p-4 font-label-md text-label-md text-on-surface-variant font-semibold uppercase tracking-wider text-right">Actions</th>
+              <tr className="border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                <th className="p-4">Lot</th>
+                <th className="p-4">Machine</th>
+                <th className="p-4">Article</th>
+                <th className="p-4">Équipe Opérateurs</th>
+                <th className="p-4">Début</th>
+                <th className="p-4">Fin</th>
+                <th className="p-4">Statut</th>
+                <th className="p-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-outline-variant font-body-md text-body-md">
+            <tbody className="divide-y divide-gray-100 text-sm">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-on-surface-variant">Chargement...</td>
+                  <td colSpan={8} className="p-8 text-center text-gray-500">Chargement...</td>
                 </tr>
               ) : sessions.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-on-surface-variant">Aucun ordre de fabrication en cours.</td>
+                  <td colSpan={8} className="p-8 text-center text-gray-500">Aucun ordre de fabrication en cours ou terminé.</td>
                 </tr>
               ) : sessions.map(session => (
-                <tr key={session.id} className="hover:bg-surface-container-lowest transition-colors cursor-pointer group">
-                  <td className="p-4 font-medium text-on-background">{session.lot_number || '-'}</td>
-                  <td className="p-4 text-on-background">{getMachineName(session.machine_id)}</td>
-                  <td className="p-4 text-on-surface-variant">{getProductName(session.product_id)}</td>
-                  <td className="p-4 text-on-surface-variant">{getOperatorName(session.operator_id)}</td>
-                  <td className="p-4 text-on-surface-variant">
+                <tr 
+                  key={session.id} 
+                  onClick={() => navigate(`/admin/cartons?start=${encodeURIComponent(session.start_time || '')}&end=${encodeURIComponent(session.end_time || '')}&operator=${encodeURIComponent(session.operator_id || '')}&article=${encodeURIComponent(session.article_id || '')}`)}
+                  className="hover:bg-gray-50 transition-colors cursor-pointer group"
+                >
+                  <td className="p-4 font-medium text-gray-900">{session.lot_number || '-'}</td>
+                  <td className="p-4 text-gray-900">
+                    <div className="font-semibold">{getMachine(session.machine_id)?.name || 'Inconnue'}</div>
+                    {getMachine(session.machine_id)?.code && (
+                      <div className="text-xs text-gray-500 mt-0.5 font-medium">{getMachine(session.machine_id)?.code}</div>
+                    )}
+                  </td>
+                  <td className="p-4 text-gray-700 font-medium">{getArticleName(session.article_id)}</td>
+                  <td className="p-4">
+                    {renderOperatorBadges(session)}
+                  </td>
+                  <td className="p-4 text-gray-600 font-medium">
                     {session.start_time ? format(new Date(session.start_time), 'HH:mm dd/MM') : '-'}
                   </td>
+                  <td className="p-4 text-gray-600 font-medium">
+                    {session.end_time ? format(new Date(session.end_time), 'HH:mm dd/MM') : '-'}
+                  </td>
                   <td className="p-4">
-                    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full font-label-md text-xs ${
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold border ${
                       session.status === 'En cours' 
-                        ? 'bg-secondary-container/20 text-secondary' 
+                        ? 'bg-blue-50 text-blue-700 border-blue-200' 
                         : session.status === 'Terminé' 
-                        ? 'bg-primary-container/20 text-primary'
-                        : 'bg-surface-variant/20 text-on-surface-variant'
+                        ? 'bg-green-50 text-green-700 border-green-200'
+                        : 'bg-gray-100 text-gray-700 border-gray-200'
                     }`}>
-                      <span className={`w-2 h-2 rounded-full ${
-                        session.status === 'En cours' ? 'bg-secondary' : session.status === 'Terminé' ? 'bg-primary' : 'bg-on-surface-variant'
+                      <span className={`w-1.5 h-1.5 rounded-full ${
+                        session.status === 'En cours' ? 'bg-blue-600 animate-pulse' : session.status === 'Terminé' ? 'bg-green-600' : 'bg-gray-500'
                       }`}></span> 
                       {session.status}
                     </span>
@@ -98,7 +122,7 @@ export function Production() {
                     {session.status === 'En cours' && (
                       <button 
                         onClick={(e) => { e.stopPropagation(); updateSessionStatus(session.id, 'Terminé', new Date().toISOString()); }}
-                        className="text-primary hover:bg-primary-container px-3 py-1 rounded-lg transition-colors font-label-md text-sm cursor-pointer"
+                        className="text-blue-600 hover:bg-blue-50 px-3 py-1 rounded-lg transition-colors text-xs font-bold border border-blue-200"
                       >
                         Terminer
                       </button>
@@ -110,88 +134,6 @@ export function Production() {
           </table>
         </div>
       </div>
-
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-surface-container-lowest rounded-2xl p-6 w-full max-w-lg card-shadow">
-            <h2 className="font-headline-sm text-headline-sm mb-6 text-on-background">Nouvel Ordre de Fabrication</h2>
-            <form onSubmit={handleStartSession} className="space-y-4">
-              <div>
-                <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Machine</label>
-                <select 
-                  required
-                  value={newSessionData.machine_id}
-                  onChange={e => setNewSessionData({...newSessionData, machine_id: e.target.value})}
-                  className="w-full p-3 bg-surface-container-low border border-outline-variant rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-on-background"
-                >
-                  <option value="">Sélectionner une machine</option>
-                  {machines.map(m => (
-                    <option key={m.id} value={m.id}>{m.name}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Produit</label>
-                <select 
-                  required
-                  value={newSessionData.product_id}
-                  onChange={e => setNewSessionData({...newSessionData, product_id: e.target.value})}
-                  className="w-full p-3 bg-surface-container-low border border-outline-variant rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-on-background"
-                >
-                  <option value="">Sélectionner un produit</option>
-                  {products.map(p => (
-                    <option key={p.id} value={p.id}>{p.name} ({p.reference})</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Opérateur</label>
-                <select 
-                  required
-                  value={newSessionData.operator_id}
-                  onChange={e => setNewSessionData({...newSessionData, operator_id: e.target.value})}
-                  className="w-full p-3 bg-surface-container-low border border-outline-variant rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-on-background"
-                >
-                  <option value="">Sélectionner un opérateur</option>
-                  {operators.map(o => (
-                    <option key={o.id} value={o.id}>{o.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Numéro de Lot</label>
-                <input 
-                  type="text"
-                  required
-                  value={newSessionData.lot_number}
-                  onChange={e => setNewSessionData({...newSessionData, lot_number: e.target.value})}
-                  className="w-full p-3 bg-surface-container-low border border-outline-variant rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-on-background"
-                  placeholder="EX: LOT-2023-XYZ"
-                />
-              </div>
-
-              <div className="flex gap-3 justify-end mt-8">
-                <button 
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-6 py-2 rounded-full font-label-md font-bold text-on-surface-variant hover:bg-surface-container-high transition-colors"
-                >
-                  Annuler
-                </button>
-                <button 
-                  type="submit"
-                  className="px-6 py-2 rounded-full font-label-md font-bold bg-primary text-on-primary hover:bg-primary/90 transition-colors"
-                >
-                  Démarrer
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

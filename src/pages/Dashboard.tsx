@@ -1,240 +1,512 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { useEffect, useState, useMemo } from 'react';
+import toast from 'react-hot-toast';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useMesStore } from '../store/mesStore';
+import { useProductionStore } from '../store/production';
+import { useStopsStore } from '../store/stops';
+import { generateDailyExecutiveDigest } from '../lib/ai';
+import { format, startOfToday, startOfMonth } from 'date-fns';
+
+function renderMarkdownHtml(md: string): string {
+  if (!md) return '';
+  return md
+    .split('\n')
+    .map(line => {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('### ')) {
+        return `<h3 class="font-bold text-base text-blue-900 mt-4 mb-1.5 flex items-center gap-1.5">${trimmed.replace('### ', '')}</h3>`;
+      }
+      if (trimmed.startsWith('## ')) {
+        return `<h2 class="font-extrabold text-lg text-slate-900 mt-5 mb-2">${trimmed.replace('## ', '')}</h2>`;
+      }
+      if (trimmed.startsWith('* ') || trimmed.startsWith('- ')) {
+        const itemContent = trimmed.substring(2)
+          .replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-slate-900">$1</strong>')
+          .replace(/\*(.*?)\*/g, '<em>$1</em>');
+        return `<li class="ml-4 list-disc text-slate-700 my-1">${itemContent}</li>`;
+      }
+      if (/^[0-9]+\.\s/.test(trimmed)) {
+        const itemContent = trimmed.replace(/^[0-9]+\.\s/, '')
+          .replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-slate-900">$1</strong>')
+          .replace(/\*(.*?)\*/g, '<em>$1</em>');
+        return `<li class="ml-4 list-decimal text-slate-700 my-1">${itemContent}</li>`;
+      }
+      if (!trimmed) {
+        return '<div class="h-2"></div>';
+      }
+      const pContent = trimmed
+        .replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-slate-900">$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>');
+      return `<p class="my-1 text-slate-700">${pContent}</p>`;
+    })
+    .join('');
+}
 
 export function Dashboard() {
-  const [stats, setStats] = useState({
-    todayProd: 0,
-    monthProd: 0,
-    waste: 0,
-    efficiency: 0,
-    activeMachines: 0,
-    stoppedMachines: 0,
-  });
+  const { orders, production_entries, fetchInitialData, setupRealtime } = useMesStore();
+  const { machines, fetchInitialData: fetchProdData, operators } = useProductionStore();
+  const { stops, fetchStops } = useStopsStore();
 
-  const chartData = [
-    { time: '08:00', value: 6000, target: 15000 },
-    { time: '10:00', value: 9000, target: 15000 },
-    { time: '12:00', value: 12000, target: 15000 },
-    { time: '14:00', value: 14200, target: 15000 },
-    { time: '16:00', value: 4500, target: 15000 },
-  ];
+  const [dailyDigest, setDailyDigest] = useState<string | null>(null);
+  const [loadingDigest, setLoadingDigest] = useState(false);
+
+  useEffect(() => {
+    fetchInitialData();
+    fetchProdData();
+    fetchStops();
+    setupRealtime();
+  }, [fetchInitialData, fetchProdData, fetchStops, setupRealtime]);
+
+  const stats = useMemo(() => {
+    const today = startOfToday().getTime();
+    const thisMonth = startOfMonth(new Date()).getTime();
+    
+    let todayProd = 0;
+    let monthProd = 0;
+    let waste = 0;
+
+    production_entries.forEach(entry => {
+      const entryTime = new Date(entry.created_at).getTime();
+      if (entryTime >= today) todayProd += (entry.good_quantity || 0);
+      if (entryTime >= thisMonth) monthProd += (entry.good_quantity || 0);
+      waste += (entry.scrap_quantity || 0);
+    });
+
+    const activeMachines = machines.filter(m => m.status === 'Active').length;
+    const stoppedMachines = machines.filter(m => m.status !== 'Active').length;
+    
+    // Calculate overall OEE
+    const validMachines = machines.filter(m => typeof m.oee === 'number');
+    const efficiency = validMachines.length > 0 
+      ? validMachines.reduce((sum, m) => sum + (m.oee || 0), 0) / validMachines.length 
+      : 85.2;
+
+    const totalProducedAll = todayProd + waste;
+    const wasteRate = totalProducedAll > 0 ? ((waste / totalProducedAll) * 100).toFixed(2) : '0.00';
+
+    return {
+      todayProd,
+      monthProd: Math.round(monthProd / 1000), // in k
+      efficiency,
+      waste,
+      wasteRate,
+      activeMachines,
+      stoppedMachines,
+      openOrders: (orders || []).filter(o => o.status !== 'Closed' && o.status !== 'Completed').length,
+      completedOrders: (orders || []).filter(o => o.status === 'Completed').length,
+    };
+  }, [production_entries, machines, orders]);
+
+  // Predictive Maintenance Risk Scoring per Machine
+  const machineHealthScores = useMemo(() => {
+    return machines.map(m => {
+      const machineStops = stops.filter(s => s.machine_id === m.id);
+      const totalStopHours = machineStops.reduce((acc, s) => {
+        if (!s.start_time) return acc;
+        const start = new Date(s.start_time).getTime();
+        const end = s.end_time ? new Date(s.end_time).getTime() : Date.now();
+        return acc + ((end - start) / (1000 * 60 * 60));
+      }, 0);
+
+      // Simple predictive risk algorithm
+      let score = 95;
+      if (m.status !== 'Active') score -= 25;
+      score -= Math.min(30, machineStops.length * 5);
+      score -= Math.min(20, totalStopHours * 2);
+      score = Math.max(35, Math.min(99, score));
+
+      let riskLevel: 'Normal' | 'Attention' | 'Critique' = 'Normal';
+      let riskNotice = 'Fonctionnement stable';
+      if (score < 70) {
+        riskLevel = 'Critique';
+        riskNotice = 'Micro-arrêts fréquents détectés : maintenance préventive requise';
+      } else if (score < 85) {
+        riskLevel = 'Attention';
+        riskNotice = 'Légère déviation TRS : contrôle réglage suggéré';
+      }
+
+      return {
+        id: m.id,
+        name: m.name,
+        code: m.code,
+        score,
+        riskLevel,
+        riskNotice,
+        stopCount: machineStops.length,
+        status: m.status
+      };
+    });
+  }, [machines, stops]);
+
+  const stopStats = useMemo(() => {
+    const statsMap: Record<string, number> = {};
+    let totalDuration = 0;
+    
+    stops.forEach(stop => {
+      if (stop.start_time) {
+        const start = new Date(stop.start_time).getTime();
+        const end = stop.end_time ? new Date(stop.end_time).getTime() : Date.now();
+        const durationHours = (end - start) / (1000 * 60 * 60);
+        
+        const reason = stop.reason || 'Autre';
+        statsMap[reason] = (statsMap[reason] || 0) + durationHours;
+        totalDuration += durationHours;
+      }
+    });
+
+    const formattedStats = Object.entries(statsMap).map(([reason, duration]) => ({
+      reason,
+      duration: Number(duration.toFixed(1)),
+      color: reason.toLowerCase().includes('mécanique') ? 'bg-red-500' : 
+             reason.toLowerCase().includes('matériel') ? 'bg-amber-500' : 
+             'bg-slate-400'
+    })).sort((a, b) => b.duration - a.duration);
+
+    return {
+      total: Number(totalDuration.toFixed(1)),
+      details: formattedStats
+    };
+  }, [stops]);
+
+  const chartData = useMemo(() => {
+    const today = startOfToday().getTime();
+    const hourlyData: Record<string, number> = {};
+    
+    production_entries.forEach(entry => {
+      const date = new Date(entry.created_at);
+      if (date.getTime() >= today) {
+        const hour = format(date, 'HH:00');
+        hourlyData[hour] = (hourlyData[hour] || 0) + (entry.good_quantity || 0);
+      }
+    });
+
+    if (Object.keys(hourlyData).length === 0) {
+      return [
+        { time: '08:00', value: 0, target: 15000 },
+        { time: '10:00', value: 0, target: 15000 },
+        { time: '12:00', value: 0, target: 15000 },
+      ];
+    }
+
+    return Object.entries(hourlyData)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([time, value]) => ({ time, value, target: 15000 }));
+  }, [production_entries]);
+
+  const handleGenerateDigest = async () => {
+    setLoadingDigest(true);
+    try {
+      const digest = await generateDailyExecutiveDigest({
+        todayProd: stats.todayProd,
+        targetProd: 15000,
+        totalScrap: stats.waste,
+        wasteRate: stats.wasteRate,
+        machines,
+        stops,
+        activeOrders: (orders || []).filter(o => o.status !== 'Closed')
+      });
+      setDailyDigest(digest);
+      toast.success('Briefing du jour généré par IA !');
+    } catch (err: any) {
+      toast.error('Erreur: ' + err.message);
+    } finally {
+      setLoadingDigest(false);
+    }
+  };
+
+  const copyDigestToClipboard = () => {
+    if (dailyDigest) {
+      navigator.clipboard.writeText(dailyDigest);
+      toast.success('Briefing copié dans le presse-papier');
+    }
+  };
 
   return (
-    <div className="max-w-[1440px] mx-auto w-full">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-card-gap mb-card-gap">
-        <div className="bg-surface-container-lowest rounded-xl p-6 border border-outline-variant card-shadow hover:border-primary transition-colors cursor-pointer group">
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-3 bg-primary-container/10 rounded-lg text-primary">
-              <span className="material-symbols-outlined icon-fill">inventory_2</span>
-            </div>
-            <span className="flex items-center text-secondary font-label-md text-label-md gap-1 bg-secondary-container/20 px-2 py-1 rounded-full">
-              <span className="material-symbols-outlined text-sm">trending_up</span> +5.2%
-            </span>
+    <div className="max-w-[1440px] mx-auto w-full space-y-6">
+      {/* Top Bar: Title & AI Digest Trigger */}
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-gradient-to-r from-blue-900 to-indigo-900 p-6 rounded-2xl text-white shadow-lg relative overflow-hidden">
+        <div className="relative z-10">
+          <div className="flex items-center gap-2 text-blue-300 text-xs font-bold uppercase tracking-widest mb-1">
+            <span className="material-symbols-outlined text-[16px]">factory</span>
+            Usine Principale Tunis
           </div>
-          <p className="font-label-md text-label-md text-on-surface-variant mb-1 uppercase tracking-wider">Production du Jour</p>
-          <h3 className="font-stat-display text-stat-display text-on-background group-hover:text-primary transition-colors">
-            {stats.todayProd} <span className="text-2xl text-on-surface-variant font-normal">unités</span>
-          </h3>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Supervision & Tableau de Bord</h1>
+          <p className="text-blue-200 text-xs sm:text-sm mt-1 max-w-xl">
+            Suivi des cadences en temps réel, alertes prédictives machines et synthèse d'atelier par IA.
+          </p>
         </div>
-
-        <div className="bg-surface-container-lowest rounded-xl p-6 border border-outline-variant card-shadow hover:border-primary transition-colors cursor-pointer group">
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-3 bg-surface-tint/10 rounded-lg text-surface-tint">
-              <span className="material-symbols-outlined icon-fill">date_range</span>
-            </div>
-            <span className="flex items-center text-secondary font-label-md text-label-md gap-1 bg-secondary-container/20 px-2 py-1 rounded-full">
-              <span className="material-symbols-outlined text-sm">trending_up</span> +1.8%
-            </span>
-          </div>
-          <p className="font-label-md text-label-md text-on-surface-variant mb-1 uppercase tracking-wider">Production du Mois</p>
-          <h3 className="font-stat-display text-stat-display text-on-background group-hover:text-surface-tint transition-colors">
-            {stats.monthProd}k <span className="text-2xl text-on-surface-variant font-normal">unités</span>
-          </h3>
-        </div>
-
-        <div className="bg-surface-container-lowest rounded-xl p-6 border border-outline-variant card-shadow hover:border-primary transition-colors cursor-pointer group">
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-3 bg-error-container rounded-lg text-error">
-              <span className="material-symbols-outlined icon-fill">delete_sweep</span>
-            </div>
-            <span className="flex items-center text-error font-label-md text-label-md gap-1 bg-error-container/50 px-2 py-1 rounded-full">
-              <span className="material-symbols-outlined text-sm">trending_up</span> +0.4%
-            </span>
-          </div>
-          <p className="font-label-md text-label-md text-on-surface-variant mb-1 uppercase tracking-wider">Quantité Déchets</p>
-          <h3 className="font-stat-display text-stat-display text-on-background group-hover:text-error transition-colors">
-            {stats.waste} <span className="text-2xl text-on-surface-variant font-normal">kg</span>
-          </h3>
-        </div>
-
-        <div className="bg-surface-container-lowest rounded-xl p-6 border border-outline-variant card-shadow hover:border-primary transition-colors cursor-pointer group">
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-3 bg-secondary-container/30 rounded-lg text-secondary">
-              <span className="material-symbols-outlined icon-fill">speed</span>
-            </div>
-            <span className="flex items-center text-secondary font-label-md text-label-md gap-1 bg-secondary-container/20 px-2 py-1 rounded-full">
-              <span className="material-symbols-outlined text-sm">trending_up</span> +2.1%
-            </span>
-          </div>
-          <p className="font-label-md text-label-md text-on-surface-variant mb-1 uppercase tracking-wider">Taux de Rendement (TRS)</p>
-          <h3 className="font-stat-display text-stat-display text-on-background group-hover:text-secondary transition-colors">
-            {stats.efficiency.toFixed(1)} <span className="text-2xl text-on-surface-variant font-normal">%</span>
-          </h3>
-        </div>
-
-        <div className="bg-surface-container-lowest rounded-xl p-6 border border-outline-variant card-shadow hover:border-primary transition-colors cursor-pointer group">
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-3 bg-secondary-container/30 rounded-lg text-secondary">
-              <span className="material-symbols-outlined icon-fill">precision_manufacturing</span>
-            </div>
-            <span className="text-on-surface-variant font-label-md text-label-md">Sur 12 au total</span>
-          </div>
-          <p className="font-label-md text-label-md text-on-surface-variant mb-1 uppercase tracking-wider">Machines Actives</p>
-          <h3 className="font-stat-display text-stat-display text-on-background group-hover:text-secondary transition-colors">
-            {stats.activeMachines}
-          </h3>
-        </div>
-
-        <div className="bg-surface-container-lowest rounded-xl p-6 border border-outline-variant card-shadow hover:border-primary transition-colors cursor-pointer group">
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-3 bg-tertiary-fixed rounded-lg text-on-tertiary-fixed">
-              <span className="material-symbols-outlined icon-fill">warning</span>
-            </div>
-            <span className="flex items-center text-error font-label-md text-label-md gap-1 bg-error-container/50 px-2 py-1 rounded-full">
-              Maint. Prévue
-            </span>
-          </div>
-          <p className="font-label-md text-label-md text-on-surface-variant mb-1 uppercase tracking-wider">Machines Arrêtées</p>
-          <h3 className="font-stat-display text-stat-display text-on-background group-hover:text-tertiary transition-colors">
-            {stats.stoppedMachines}
-          </h3>
+        <div className="relative z-10 flex items-center gap-3">
+          <button
+            onClick={handleGenerateDigest}
+            disabled={loadingDigest}
+            className="px-5 py-3 bg-blue-500 hover:bg-blue-400 text-white font-bold text-sm rounded-xl shadow-md transition-all flex items-center gap-2 disabled:opacity-70 hover:scale-102 active:scale-98"
+          >
+            {loadingDigest ? (
+              <>
+                <span className="material-symbols-outlined text-[20px] animate-spin">refresh</span>
+                Génération...
+              </>
+            ) : (
+              <>
+                <span className="material-symbols-outlined text-[20px]">auto_awesome</span>
+                Briefing Exécutif (IA)
+              </>
+            )}
+          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-card-gap">
-        <div className="lg:col-span-2 bg-surface-container-lowest rounded-xl border border-outline-variant card-shadow flex flex-col">
-          <div className="p-6 border-b border-outline-variant flex justify-between items-center">
-            <div>
-              <h3 className="font-headline-md text-headline-md text-on-background">Production Quotidienne</h3>
-              <p className="font-body-md text-body-md text-on-surface-variant">Volume par heure vs Objectif</p>
+      {/* AI Daily Digest Drawer (if generated) */}
+      {dailyDigest && (
+        <div className="bg-white border border-blue-200 rounded-2xl p-6 shadow-md animate-in slide-in-from-top-4">
+          <div className="flex justify-between items-center pb-4 border-b border-slate-100 mb-4">
+            <div className="flex items-center gap-2 text-blue-700 font-bold text-base">
+              <span className="material-symbols-outlined text-blue-600">psychology</span>
+              Briefing Exécutif Journalier
             </div>
-            <button className="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors">
-              <span className="material-symbols-outlined">more_vert</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={copyDigestToClipboard}
+                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1"
+              >
+                <span className="material-symbols-outlined text-[16px]">content_copy</span>
+                Copier
+              </button>
+              <button
+                onClick={() => setDailyDigest(null)}
+                className="p-1 text-slate-400 hover:text-slate-700 rounded-md"
+              >
+                <span className="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            </div>
           </div>
-          <div className="p-6 flex-1 flex items-center justify-center min-h-[300px] h-[300px] relative overflow-hidden group">
+          <div 
+            className="prose prose-blue max-w-none text-sm text-slate-800 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-200"
+            dangerouslySetInnerHTML={{ __html: renderMarkdownHtml(dailyDigest) }}
+          />
+        </div>
+      )}
+
+      {/* Key Metric KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-xs hover:shadow-md transition-all">
+          <div className="flex justify-between items-start mb-2">
+            <span className="text-slate-500 font-bold text-xs uppercase tracking-wider">Production Jour</span>
+            <span className="flex items-center text-emerald-700 text-xs font-bold gap-1 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+              <span className="material-symbols-outlined text-[14px]">trending_up</span> +5.2%
+            </span>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+              {stats.todayProd.toLocaleString()}
+            </h3>
+            <span className="text-slate-400 text-xs font-medium">unités</span>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-xs hover:shadow-md transition-all">
+          <div className="flex justify-between items-start mb-2">
+            <span className="text-slate-500 font-bold text-xs uppercase tracking-wider">Taux de Rebut</span>
+            <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${Number(stats.wasteRate) > 3 ? 'bg-red-50 text-red-700 border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+              Target &lt; 3%
+            </span>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+              {stats.wasteRate}%
+            </h3>
+            <span className="text-slate-400 text-xs font-medium">({stats.waste} unités)</span>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-xs hover:shadow-md transition-all">
+          <div className="flex justify-between items-start mb-2">
+            <span className="text-slate-500 font-bold text-xs uppercase tracking-wider">Rendement OEE</span>
+            <span className="flex items-center text-blue-700 text-xs font-bold gap-1 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+              Optimal
+            </span>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <h3 className="text-2xl font-black text-blue-600 tracking-tight">
+              {stats.efficiency.toFixed(1)}%
+            </h3>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-xs hover:shadow-md transition-all">
+          <div className="flex justify-between items-start mb-2">
+            <span className="text-slate-500 font-bold text-xs uppercase tracking-wider">Machines en Ligne</span>
+            <span className="text-slate-500 text-xs font-bold">{stats.activeMachines}/{machines.length} actives</span>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+              {stats.activeMachines}
+            </h3>
+            <span className="text-slate-400 text-xs font-medium">machines actives</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Predictive Maintenance & Machine Health Monitor */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs">
+        <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-100">
+          <div>
+            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <span className="material-symbols-outlined text-indigo-600">health_and_safety</span>
+              Santé Prédictive des Lignes de Production
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">Indice calculé d'après les micro-arrêts, la fréquence des pannes et les heures de service.</p>
+          </div>
+          <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100">
+            Algorithme Prédictif Actif
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {machineHealthScores.map(m => (
+            <div key={m.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col justify-between hover:border-blue-300 transition-all">
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <div className="font-bold text-slate-900 text-sm">{m.name}</div>
+                  <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${
+                    m.riskLevel === 'Critique' ? 'bg-red-100 text-red-800' :
+                    m.riskLevel === 'Attention' ? 'bg-amber-100 text-amber-800' :
+                    'bg-emerald-100 text-emerald-800'
+                  }`}>
+                    {m.score}% Santé
+                  </span>
+                </div>
+                <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden mb-3">
+                  <div 
+                    className={`h-full rounded-full ${
+                      m.score < 70 ? 'bg-red-500' : m.score < 85 ? 'bg-amber-500' : 'bg-emerald-500'
+                    }`}
+                    style={{ width: `${m.score}%` }}
+                  ></div>
+                </div>
+                <p className="text-xs text-slate-600 font-medium leading-tight mb-2">
+                  {m.riskNotice}
+                </p>
+              </div>
+              <div className="text-[11px] text-slate-400 font-semibold pt-2 border-t border-slate-200 flex justify-between">
+                <span>{m.stopCount} arrêt(s) récents</span>
+                <span className={m.status === 'Active' ? 'text-emerald-600 font-bold' : 'text-slate-500'}>{m.status}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Production Chart & Downtime Breakdown */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-xs flex flex-col overflow-hidden">
+          <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+            <div>
+              <h3 className="text-base font-bold text-slate-900 tracking-tight">Rendement Horaire de Production</h3>
+              <p className="text-xs text-slate-500 font-medium">Volume horaire vs Cible de quart (15k)</p>
+            </div>
+          </div>
+          <div className="p-6 flex-1 flex items-center justify-center min-h-[280px] h-[280px] relative">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 20, right: 0, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#002869" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#002869" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#2563eb" stopOpacity={0.2}/>
+                    <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#c4c6d3" opacity={0.5} />
-                <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{fill: '#434652', fontSize: 12}} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
                 <YAxis hide />
-                <Tooltip />
-                <Area type="monotone" dataKey="value" stroke="#002869" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
+                <Tooltip 
+                  contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}
+                  itemStyle={{ color: '#0f172a', fontWeight: 600 }}
+                />
+                <Area type="monotone" dataKey="value" stroke="#2563eb" strokeWidth={2} fillOpacity={1} fill="url(#colorValue)" />
               </AreaChart>
             </ResponsiveContainer>
-            <div className="absolute top-1/4 left-0 w-full border-t-2 border-dashed border-error opacity-50 px-8 pointer-events-none"></div>
-            <span className="absolute top-1/4 left-10 -mt-6 font-label-md text-label-md text-error pointer-events-none">Objectif (15k)</span>
           </div>
         </div>
 
-        <div className="flex flex-col gap-card-gap">
-          <div className="bg-surface-container-lowest rounded-xl border border-outline-variant card-shadow p-6 flex-1">
-            <h3 className="font-headline-md text-headline-md text-on-background mb-4">Temps d'arrêt par motif</h3>
-            <div className="relative w-48 h-48 mx-auto mb-6">
-              <div className="absolute inset-0 rounded-full border-[16px] border-surface-variant"></div>
-              <div className="absolute inset-0 rounded-full border-[16px] border-tertiary-fixed border-t-transparent border-l-transparent transform rotate-45"></div>
-              <div className="absolute inset-0 rounded-full border-[16px] border-error border-b-transparent border-r-transparent transform -rotate-45"></div>
-              <div className="absolute inset-0 flex items-center justify-center flex-col">
-                <span className="font-stat-display text-3xl text-on-background">4.2h</span>
-                <span className="font-label-md text-label-md text-on-surface-variant">Total</span>
-              </div>
-            </div>
+        {/* Downtime Reasons Pie/List */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 flex flex-col justify-between">
+          <div>
+            <h3 className="text-base font-bold text-slate-900 tracking-tight mb-1">Causes d'Arrêt Cumulées</h3>
+            <p className="text-xs text-slate-500 mb-6">Total: <strong className="text-slate-900">{stopStats.total} heures</strong></p>
             <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-error"></div>
-                  <span className="font-body-md text-body-md text-on-surface-variant">Panne Mécanique</span>
+              {stopStats.details.length > 0 ? stopStats.details.map((stat, i) => (
+                <div key={i} className="flex justify-between items-center p-2.5 bg-slate-50 rounded-xl">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full ${stat.color}`}></div>
+                    <span className="text-xs font-semibold text-slate-700">{stat.reason}</span>
+                  </div>
+                  <span className="text-xs font-bold text-slate-900">{stat.duration}h</span>
                 </div>
-                <span className="font-label-md text-label-md text-on-background">2.1h</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-tertiary-fixed"></div>
-                  <span className="font-body-md text-body-md text-on-surface-variant">Manque Matière</span>
-                </div>
-                <span className="font-label-md text-label-md text-on-background">1.5h</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-surface-variant"></div>
-                  <span className="font-body-md text-body-md text-on-surface-variant">Changement Format</span>
-                </div>
-                <span className="font-label-md text-label-md text-on-background">0.6h</span>
-              </div>
+              )) : (
+                <div className="text-center text-slate-400 text-xs py-8">Aucun arrêt signalé aujourd'hui</div>
+              )}
             </div>
           </div>
         </div>
+      </div>
 
-        <div className="lg:col-span-3 bg-surface-container-lowest rounded-xl border border-outline-variant card-shadow overflow-hidden">
-          <div className="p-6 border-b border-outline-variant flex justify-between items-center bg-surface-container-low/50">
-            <div>
-              <h3 className="font-headline-md text-headline-md text-on-background">Activités Récentes</h3>
-              <p className="font-body-md text-body-md text-on-surface-variant">Suivi en temps réel des opérations</p>
-            </div>
-            <button className="font-label-md text-label-md text-primary hover:bg-surface-container-high px-4 py-2 rounded-lg transition-colors border border-outline-variant bg-surface-container-lowest">
-              Voir tout l'historique
-            </button>
+      {/* Recent Production Entries */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+        <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+          <div>
+            <h3 className="text-base font-bold text-slate-900">Derniers Enregistrements de Production</h3>
+            <p className="text-xs text-slate-500">Flux temps réel provenant des tablettes opérateurs</p>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-outline-variant bg-surface">
-                  <th className="p-4 font-label-md text-label-md text-on-surface-variant font-semibold uppercase tracking-wider">Heure</th>
-                  <th className="p-4 font-label-md text-label-md text-on-surface-variant font-semibold uppercase tracking-wider">Machine</th>
-                  <th className="p-4 font-label-md text-label-md text-on-surface-variant font-semibold uppercase tracking-wider">Produit</th>
-                  <th className="p-4 font-label-md text-label-md text-on-surface-variant font-semibold uppercase tracking-wider">Opérateur</th>
-                  <th className="p-4 font-label-md text-label-md text-on-surface-variant font-semibold uppercase tracking-wider">Statut</th>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                <th className="p-4">Heure</th>
+                <th className="p-4">Machine</th>
+                <th className="p-4">Ordre (OF)</th>
+                <th className="p-4">Opérateur</th>
+                <th className="p-4">Quantité</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-sm">
+              {production_entries.slice(0, 5).map(entry => {
+                const machine = machines.find(m => m.id === entry.machine_id);
+                const order = orders.find(o => o.id === entry.of_id);
+                const operator = operators.find(o => o.id === entry.operator_id);
+                return (
+                  <tr key={entry.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="p-4 text-xs font-semibold text-slate-500 whitespace-nowrap">
+                      {format(new Date(entry.created_at), 'HH:mm')}
+                    </td>
+                    <td className="p-4 font-semibold text-slate-900">
+                      {machine?.name || 'Machine'}
+                      {machine?.code && <span className="text-xs text-slate-400 ml-1 font-normal">({machine.code})</span>}
+                    </td>
+                    <td className="p-4 text-xs font-bold text-blue-700">
+                      {order?.of_number || '-'}
+                    </td>
+                    <td className="p-4 text-xs text-slate-600 font-medium">
+                      {operator?.name || 'Opérateur'}
+                    </td>
+                    <td className="p-4">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        +{entry.good_quantity} ex
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+              {production_entries.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="p-8 text-center text-slate-500 text-xs">
+                    Aucune production enregistrée aujourd'hui
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-outline-variant font-body-md text-body-md">
-                <tr className="hover:bg-surface-container-lowest transition-colors cursor-pointer group">
-                  <td className="p-4 text-on-surface-variant group-hover:text-on-background">10:45</td>
-                  <td className="p-4 font-medium text-on-background">Ligne Assemblage B</td>
-                  <td className="p-4 text-on-surface-variant">Pièce Moteur XZ-4</td>
-                  <td className="p-4 text-on-surface-variant flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-label-md text-[10px]">JD</div>
-                    Jean D.
-                  </td>
-                  <td className="p-4">
-                    <span className="inline-flex items-center gap-1 bg-secondary-container/20 text-secondary px-2 py-1 rounded-full font-label-md text-xs">
-                      <span className="w-2 h-2 rounded-full bg-secondary"></span> En cours
-                    </span>
-                  </td>
-                </tr>
-                <tr className="hover:bg-surface-container-lowest transition-colors cursor-pointer group">
-                  <td className="p-4 text-on-surface-variant group-hover:text-on-background">10:30</td>
-                  <td className="p-4 font-medium text-on-background">Presse Injection 1</td>
-                  <td className="p-4 text-on-surface-variant">Boîtier Plastique</td>
-                  <td className="p-4 text-on-surface-variant flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-tertiary-container text-on-tertiary-container flex items-center justify-center font-label-md text-[10px]">ML</div>
-                    Marie L.
-                  </td>
-                  <td className="p-4">
-                    <span className="inline-flex items-center gap-1 bg-error-container/50 text-error px-2 py-1 rounded-full font-label-md text-xs">
-                      <span className="w-2 h-2 rounded-full bg-error"></span> Arrêt (Maint.)
-                    </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

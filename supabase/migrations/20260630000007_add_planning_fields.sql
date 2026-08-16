@@ -1,0 +1,14 @@
+-- Add detailed OF and Planning fields to manufacturing_orders
+ALTER TABLE manufacturing_orders 
+ADD COLUMN IF NOT EXISTS po_number TEXT,
+ADD COLUMN IF NOT EXISTS observation TEXT,
+ADD COLUMN IF NOT EXISTS mandrin_type TEXT,
+ADD COLUMN IF NOT EXISTS planned_axes INTEGER,
+ADD COLUMN IF NOT EXISTS planned_cartons INTEGER,
+ADD COLUMN IF NOT EXISTS colisage TEXT,
+ADD COLUMN IF NOT EXISTS adhesif_color TEXT,
+ADD COLUMN IF NOT EXISTS carton_model TEXT,
+ADD COLUMN IF NOT EXISTS palettisation INTEGER,
+ADD COLUMN IF NOT EXISTS machine_id UUID REFERENCES machines(id) ON DELETE SET NULL,
+ADD COLUMN IF NOT EXISTS planned_start_date TIMESTAMP WITH TIME ZONE,
+ADD COLUMN IF NOT EXISTS planned_end_date TIMESTAMP WITH TIME ZONE;

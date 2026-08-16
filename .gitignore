@@ -6,3 +6,7 @@ coverage/
 *.log
 .env*
 !.env.example
+.vite/
+.system_generated/
+.tempmediaStorage/
+.user_uploaded/

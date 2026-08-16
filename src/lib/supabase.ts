@@ -8,7 +8,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('Supabase credentials not found in environment variables. Please check .env file.');
 }
 
-export const supabase = createClient<any, 'public', any>(
+export const supabase = createClient<Database>(
   supabaseUrl || 'http://localhost:54321', 
   supabaseAnonKey || 'setup-your-anon-key'
 );
