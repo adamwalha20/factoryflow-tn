@@ -47,8 +47,13 @@ export const processOfflineSync = async (): Promise<{ synced: number; failed: nu
   for (const item of queue) {
     try {
       if (item.type === 'PRODUCTION_ENTRY') {
-        const { pieces_per_carton, carton_capacity, colisage, ...sanitized } = item.payload || {};
-        const { error } = await (supabase as any).from('production_entries').insert([sanitized]);
+        const { pieces_per_carton, carton_capacity, colisage, operator_ids, ...sanitized } = item.payload || {};
+        const orgId = sanitized.organization_id || (typeof localStorage !== 'undefined' ? localStorage.getItem('active_org_id') : null) || '00000000-0000-0000-0000-000000000000';
+        const payloadToInsert = {
+          ...sanitized,
+          organization_id: orgId
+        };
+        const { error } = await (supabase as any).from('production_entries').insert([payloadToInsert]);
         if (error) throw error;
       } else if (item.type === 'CARTON_CREATE') {
         const { error } = await (supabase as any).from('cartons').insert([item.payload]);

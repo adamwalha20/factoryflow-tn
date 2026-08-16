@@ -343,7 +343,7 @@ export const useMesStore = create<MesStore>((set, get) => ({
   addProductionEntry: async (data: Partial<ProductionEntry>, generateCarton: boolean) => {
     try {
       const orgId = getActiveOrgId();
-      const { pieces_per_carton, carton_capacity, colisage, ...sanitizedEntryData } = data as any;
+      const { pieces_per_carton, carton_capacity, colisage, operator_ids, ...sanitizedEntryData } = data as any;
       const { data: newEntry, error } = await (supabase as any)
         .from('production_entries')
         .insert([{ organization_id: orgId, ...sanitizedEntryData }])

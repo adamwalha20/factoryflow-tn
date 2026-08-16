@@ -350,7 +350,10 @@ export function TabletProduction() {
     const remainder = axesQty % capacity;
     const totalCartons = numberOfFullCartons + (remainder > 0 ? 1 : 0);
 
+    const orgId = currentOrg?.id || (typeof localStorage !== 'undefined' ? localStorage.getItem('active_org_id') : null) || '00000000-0000-0000-0000-000000000000';
+
     const entryPayload = {
+      organization_id: orgId,
       of_id: selectedOfId,
       machine_id: selectedMachineId,
       operator_id: selectedOperatorIds[0] || null,
@@ -395,11 +398,17 @@ export function TabletProduction() {
       setQcPoids('');
       toast.success(`Production Enregistrée (${totalCartons} cartons générés)`);
     } catch (err: any) {
-      enqueueOfflineEvent('PRODUCTION_ENTRY', entryPayload);
-      setPendingSyncCount(getOfflineQueue().length);
-      toast('Réseau instable : sauvegardé localement pour synchronisation', { icon: '📦' });
-      setAxesQty(0);
-      setScrapQty(0);
+      console.error('Production save error:', err);
+      const isNetworkError = !navigator.onLine || err?.message?.includes('fetch') || err?.message?.includes('network') || err?.message?.includes('Failed to fetch');
+      if (isNetworkError) {
+        enqueueOfflineEvent('PRODUCTION_ENTRY', entryPayload);
+        setPendingSyncCount(getOfflineQueue().length);
+        toast('Réseau instable : sauvegardé localement pour synchronisation', { icon: '📦' });
+        setAxesQty(0);
+        setScrapQty(0);
+      } else {
+        toast.error('Erreur enregistrement : ' + (err?.message || 'Erreur inconnue'));
+      }
     }
   };
 
