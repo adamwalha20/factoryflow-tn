@@ -16,7 +16,7 @@ export function Utilisateurs() {
     role: 'Machine Operator',
     phone: '',
     password: '',
-    pin_code: '1234'
+    pin_code: ''
   });
 
   useEffect(() => {
@@ -67,12 +67,17 @@ export function Utilisateurs() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      if (isShopfloorRole(formData.role) && !formData.pin_code && !editingUserId) {
+        toast.error('Veuillez renseigner un code PIN à 4 chiffres pour cet opérateur.');
+        return;
+      }
+
       const payload: any = {
         name: formData.name,
         email: formData.email,
         role: formData.role as any,
         phone: formData.phone,
-        pin_code: formData.pin_code || '1234'
+        pin_code: formData.pin_code || ''
       };
 
       if (!isShopfloorRole(formData.role) && formData.password) {
@@ -91,7 +96,7 @@ export function Utilisateurs() {
       }
       setIsModalOpen(false);
       setEditingUserId(null);
-      setFormData({ name: '', email: '', role: 'Machine Operator', phone: '', password: '', pin_code: '1234' });
+      setFormData({ name: '', email: '', role: 'Machine Operator', phone: '', password: '', pin_code: '' });
     } catch (err: any) {
       toast.error(err?.message || (editingUserId ? 'Erreur lors de la modification' : "Erreur lors de l'ajout de l'utilisateur"));
     }
@@ -105,14 +110,14 @@ export function Utilisateurs() {
       role: user.role || 'Machine Operator',
       phone: user.phone || '',
       password: '',
-      pin_code: user.pin_code || '1234'
+      pin_code: user.pin_code || ''
     });
     setIsModalOpen(true);
   };
 
   const handleAddClick = () => {
     setEditingUserId(null);
-    setFormData({ name: '', email: '', role: 'Machine Operator', phone: '', password: '', pin_code: '1234' });
+    setFormData({ name: '', email: '', role: 'Machine Operator', phone: '', password: '', pin_code: '' });
     setIsModalOpen(true);
   };
 

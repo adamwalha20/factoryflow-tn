@@ -35,7 +35,6 @@ export function TenantUsers() {
     const orgId = currentOrg?.id || localStorage.getItem('active_org_id');
     try {
       if (orgId) {
-        // Fetch organization members and user profiles
         const { data: usersData } = await (supabase as any)
           .from('users')
           .select('*')
@@ -46,14 +45,31 @@ export function TenantUsers() {
           .select('*')
           .eq('organization_id', orgId);
 
-        const combined: MemberItem[] = (usersData || []).map((u: any) => {
+        // Filter to ONLY include managers and administrators in the SaaS team list
+        const isShopfloorRole = (role: string) => [
+          'Machine Operator',
+          'Operator',
+          'Opérateur',
+          'Opérateur Machine',
+          'Quality Controller',
+          'Contrôleur Qualité',
+          'Warehouse Operator',
+          'Opérateur Entrepôt',
+          'Mechanic',
+          'Mécanicien'
+        ].includes(role);
+
+        const managementUsers = (usersData || []).filter((u: any) => !isShopfloorRole(u.role || ''));
+
+        const combined: MemberItem[] = managementUsers.map((u: any) => {
           const m = (membersData || []).find((mem: any) => mem.user_id === u.id);
+          const computedRole: OrgRole = m?.role || (u.role === 'Administrator' ? 'OWNER' : 'MANAGER');
           return {
             id: m?.id || u.id,
             user_id: u.id,
             name: u.name || u.email,
             email: u.email,
-            role: m?.role || (u.role === 'Administrator' ? 'OWNER' : 'MANAGER'),
+            role: computedRole,
             status: m?.status || 'ACTIVE',
             created_at: u.created_at || new Date().toISOString()
           };
