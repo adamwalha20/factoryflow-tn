@@ -198,18 +198,38 @@ export function ManufacturingOrders() {
     setIsModalOpen(true);
   };
 
-  const handleAddClick = () => {
-    setEditingOrderId(null);
-    
-    // Calculate the next OF number
-    let maxOf = 0;
-    orders.forEach(order => {
-      const ofNum = parseInt(order.of_number, 10);
-      if (!isNaN(ofNum) && ofNum > maxOf) {
-        maxOf = ofNum;
+  const generateNextOfNumber = (ordersList: any[]) => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const dateStr = `${year}${month}${day}`;
+    const prefix = `OF-${dateStr}-`;
+
+    let maxSeq = 0;
+    (ordersList || []).forEach(order => {
+      const ofNum = (order.of_number || '').trim();
+      if (ofNum.startsWith(prefix)) {
+        const seqPart = parseInt(ofNum.substring(prefix.length), 10);
+        if (!isNaN(seqPart) && seqPart > maxSeq) {
+          maxSeq = seqPart;
+        }
+      } else if (ofNum.includes(dateStr)) {
+        const parts = ofNum.split('-');
+        const last = parseInt(parts[parts.length - 1], 10);
+        if (!isNaN(last) && last > maxSeq) {
+          maxSeq = last;
+        }
       }
     });
-    const nextOf = maxOf > 0 ? (maxOf + 1).toString() : '10001';
+
+    const nextSeq = String(maxSeq + 1).padStart(3, '0');
+    return `${prefix}${nextSeq}`;
+  };
+
+  const handleAddClick = () => {
+    setEditingOrderId(null);
+    const nextOf = generateNextOfNumber(orders);
 
     setFormData({
       ...initialFormState,
@@ -468,7 +488,14 @@ export function ManufacturingOrders() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1">N° Ordre de Fabrication *</label>
-                    <input required type="text" value={formData.of_number} readOnly className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-gray-100 text-gray-500 font-bold cursor-not-allowed focus:outline-none" />
+                    <input 
+                      required 
+                      type="text" 
+                      value={formData.of_number} 
+                      onChange={e => setFormData({...formData, of_number: e.target.value})} 
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-gray-50 text-gray-900 font-mono font-bold focus:ring-1 focus:ring-primary focus:border-primary" 
+                      placeholder="ex: OF-20260816-001" 
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1">Priorité</label>
