@@ -231,8 +231,17 @@ export function TabletProduction() {
   const currentOrder = orders.find(o => o.id === selectedOfId);
   const currentArticle = articles.find(a => a.id === currentOrder?.article_id);
   
+  // Filter to ONLY include shopfloor operators (excluding admins, owners, managers)
+  const isShopfloorOperator = (role: string) => {
+    const r = (role || '').toLowerCase();
+    const isManagerOrAdmin = r.includes('admin') || r.includes('owner') || r.includes('manager') || r.includes('directeur');
+    return !isManagerOrAdmin;
+  };
+
+  const activeFilteredOperators = operators.filter(o => isShopfloorOperator(o.role || ''));
+
   // Up to 4 active workers
-  const activeWorkers = operators.filter(o => selectedOperatorIds.includes(o.id));
+  const activeWorkers = activeFilteredOperators.filter(o => selectedOperatorIds.includes(o.id));
 
   // PIN Pad Logic
   const handleOpenPinModal = (operator?: any) => {
@@ -429,10 +438,6 @@ export function TabletProduction() {
       </div>
     );
   }
-
-  const activeFilteredOperators = operators.filter(o => 
-    !o.role || o.role === 'Machine Operator' || o.role === 'Opérateur Machine' || o.role === 'Operator' || o.role === 'Administrator'
-  );
 
   return (
     <div className="h-full flex flex-col max-w-[1400px] mx-auto p-2 sm:p-4 gap-4 sm:gap-6 select-none font-sans overflow-x-hidden">

@@ -111,11 +111,20 @@ export const useProductionStore = create<ProductionStore>((set, get) => ({
         }
       });
 
+      // Filter to ONLY include shopfloor operators (excluding admins, owners, managers)
+      const isShopfloorOperator = (role: string) => {
+        const r = (role || '').toLowerCase();
+        const isManagerOrAdmin = r.includes('admin') || r.includes('owner') || r.includes('manager') || r.includes('directeur');
+        return !isManagerOrAdmin;
+      };
+
+      const filteredOperators = operators.filter(o => isShopfloorOperator(o.role || ''));
+
       set({
         machines,
         sessions,
         articles: allArticles,
-        operators,
+        operators: filteredOperators,
         loading: false,
         error: null
       });
