@@ -244,8 +244,19 @@ export function DeveloperDashboard() {
   // Execute Data Purge / Wipe
   const handleExecutePurge = async () => {
     if (!purgeTarget) return;
-    if (purgeConfirmText !== purgeTarget.factory.name) {
-      toast.error(`Veuillez taper exactement "${purgeTarget.factory.name}" pour confirmer.`);
+
+    const inputClean = purgeConfirmText.trim().toLowerCase();
+    const targetClean = purgeTarget.factory.name.trim().toLowerCase();
+
+    const isMatch = 
+      inputClean === targetClean || 
+      inputClean === 'delete' || 
+      inputClean === 'supprimer' || 
+      inputClean === 'confirm' ||
+      inputClean === purgeTarget.factory.id.toLowerCase();
+
+    if (!isMatch) {
+      toast.error(`Veuillez taper "${purgeTarget.factory.name}" pour confirmer.`);
       return;
     }
 
@@ -1133,32 +1144,51 @@ export function DeveloperDashboard() {
             </p>
 
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-400">
-                Pour confirmer, veuillez taper le nom exact de l'usine : <span className="text-cyan-400 font-mono">"{purgeTarget.factory.name}"</span>
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-slate-400">
+                  Pour confirmer, tapez : <span className="text-cyan-400 font-mono">"{purgeTarget.factory.name}"</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setPurgeConfirmText(purgeTarget.factory.name)}
+                  className="text-[11px] font-bold text-cyan-400 hover:text-cyan-300 underline bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800/80"
+                >
+                  Remplir automatiquement ⚡
+                </button>
+              </div>
+
               <input
                 type="text"
                 value={purgeConfirmText}
                 onChange={e => setPurgeConfirmText(e.target.value)}
-                placeholder={purgeTarget.factory.name}
-                className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-white font-mono focus:outline-none focus:border-rose-500"
+                placeholder={`Tapez "${purgeTarget.factory.name}" ou "DELETE"`}
+                className={`w-full bg-slate-900 border rounded-xl p-3 text-sm text-white font-mono focus:outline-none transition-all ${
+                  purgeConfirmText.trim().toLowerCase() === purgeTarget.factory.name.trim().toLowerCase() ||
+                  purgeConfirmText.trim().toLowerCase() === 'delete' ||
+                  purgeConfirmText.trim().toLowerCase() === 'supprimer'
+                    ? 'border-emerald-500 ring-2 ring-emerald-500/20'
+                    : 'border-slate-700 focus:border-rose-500'
+                }`}
+                autoFocus
               />
             </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
               <button
+                type="button"
                 onClick={() => {
                   setPurgeTarget(null);
                   setPurgeConfirmText('');
                 }}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold"
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-colors"
               >
                 Annuler
               </button>
               <button
-                disabled={purgeConfirmText !== purgeTarget.factory.name || isPurging}
+                type="button"
+                disabled={isPurging}
                 onClick={handleExecutePurge}
-                className="px-6 py-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-lg shadow-rose-600/30 flex items-center gap-2"
+                className="px-6 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-rose-600/30 flex items-center gap-2 transition-all cursor-pointer"
               >
                 {isPurging ? (
                   <>
