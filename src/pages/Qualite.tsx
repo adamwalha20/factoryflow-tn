@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { useQualityStore } from '../store/quality';
 import { useProductionStore } from '../store/production';
+import { useLanguageStore } from '../store/language';
 
 const Qualite = () => {
   const { inspections, fetchInspections, addInspection, loading } = useQualityStore();
   const { articles, machines, fetchInitialData } = useProductionStore();
+  const { t } = useLanguageStore();
 
   const [productId, setProductId] = useState('');
   const [machineId, setMachineId] = useState('');
@@ -59,14 +61,14 @@ const Qualite = () => {
       
 <div className="flex-1 mt-16 p-container-padding overflow-y-auto w-full max-w-[1440px] mx-auto">
 <div className="mb-8">
-<h2 className="font-headline-lg text-headline-lg text-on-background">Contrôle Qualité</h2>
-<p className="font-body-lg text-body-lg text-on-surface-variant mt-2">Suivi des inspections et déclaration de non-conformité.</p>
+<h2 className="font-headline-lg text-headline-lg text-on-background">{t.quality_control}</h2>
+<p className="font-body-lg text-body-lg text-on-surface-variant mt-2">{t.overview}</p>
 </div>
 
 <div className="grid grid-cols-1 md:grid-cols-3 gap-card-gap mb-8">
 <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 hover-elevate transition-all">
 <div className="flex items-center justify-between mb-4">
-<h3 className="font-label-md text-label-md text-on-surface-variant">Produits conformes</h3>
+<h3 className="font-label-md text-label-md text-on-surface-variant">{t.conforme}</h3>
 <div className="w-10 h-10 rounded-full bg-secondary-container/30 flex items-center justify-center text-secondary">
 <span className="material-symbols-outlined" data-icon="check_circle">check_circle</span>
 </div>
@@ -74,12 +76,12 @@ const Qualite = () => {
 <div className="font-stat-display text-stat-display text-on-background">{conformCount}</div>
 <div className="flex items-center gap-1 mt-2 text-secondary font-label-md text-label-md">
 <span className="material-symbols-outlined text-[16px]" data-icon="trending_up">trending_up</span>
-<span>Aujourd'hui</span>
+<span>{t.dash_today_prod}</span>
 </div>
 </div>
 <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 hover-elevate transition-all">
 <div className="flex items-center justify-between mb-4">
-<h3 className="font-label-md text-label-md text-on-surface-variant">Produits rejetés</h3>
+<h3 className="font-label-md text-label-md text-on-surface-variant">{t.non_conforme}</h3>
 <div className="w-10 h-10 rounded-full bg-error-container flex items-center justify-center text-error">
 <span className="material-symbols-outlined" data-icon="cancel">cancel</span>
 </div>
@@ -87,12 +89,12 @@ const Qualite = () => {
 <div className="font-stat-display text-stat-display text-on-background">{rejectedCount}</div>
 <div className="flex items-center gap-1 mt-2 text-error font-label-md text-label-md">
 <span className="material-symbols-outlined text-[16px]" data-icon="trending_down">trending_down</span>
-<span>Aujourd'hui</span>
+<span>{t.dash_today_prod}</span>
 </div>
 </div>
 <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 hover-elevate transition-all">
 <div className="flex items-center justify-between mb-4">
-<h3 className="font-label-md text-label-md text-on-surface-variant">Taux de conformité</h3>
+<h3 className="font-label-md text-label-md text-on-surface-variant">{t.efficiency}</h3>
 <div className="w-10 h-10 rounded-full bg-primary-fixed flex items-center justify-center text-primary">
 <span className="material-symbols-outlined" data-icon="percent">percent</span>
 </div>
@@ -102,7 +104,7 @@ const Qualite = () => {
 <div className="mt-4 w-full bg-surface-container-high rounded-full h-2">
 <div className="bg-secondary h-2 rounded-full" style={{width: `${complianceRate}%`}}></div>
 </div>
-<div className="mt-2 text-right font-label-md text-label-md text-on-surface-variant">Cible: 99.0%</div>
+<div className="mt-2 text-right font-label-md text-label-md text-on-surface-variant">{t.target}: 99.0%</div>
 </div>
 </div>
 <div className="grid grid-cols-1 lg:grid-cols-12 gap-card-gap">
@@ -179,12 +181,12 @@ const Qualite = () => {
 <table className="w-full text-left border-collapse">
 <thead className="bg-surface-container-low border-b border-outline-variant">
 <tr>
-<th className="p-4 font-label-md text-label-md text-on-surface-variant font-semibold">Date</th>
-<th className="p-4 font-label-md text-label-md text-on-surface-variant font-semibold">Lot</th>
-<th className="p-4 font-label-md text-label-md text-on-surface-variant font-semibold">Article</th>
-<th className="p-4 font-label-md text-label-md text-on-surface-variant font-semibold">Machine</th>
-<th className="p-4 font-label-md text-label-md text-on-surface-variant font-semibold">Résultat</th>
-<th className="p-4 font-label-md text-label-md text-on-surface-variant font-semibold text-right">Actions</th>
+<th className="p-4 font-label-md text-label-md text-on-surface-variant font-semibold">{t.date}</th>
+<th className="p-4 font-label-md text-label-md text-on-surface-variant font-semibold">{t.lot_no}</th>
+<th className="p-4 font-label-md text-label-md text-on-surface-variant font-semibold">{t.articles}</th>
+<th className="p-4 font-label-md text-label-md text-on-surface-variant font-semibold">{t.machine}</th>
+<th className="p-4 font-label-md text-label-md text-on-surface-variant font-semibold">{t.status}</th>
+<th className="p-4 font-label-md text-label-md text-on-surface-variant font-semibold text-right">{t.actions}</th>
 </tr>
 </thead>
 <tbody className="font-body-md text-body-md divide-y divide-outline-variant">

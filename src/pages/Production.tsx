@@ -1,10 +1,12 @@
 import React, { useEffect } from 'react';
 import { useProductionStore } from '../store/production';
+import { useLanguageStore } from '../store/language';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 
 export function Production() {
   const { sessions, machines, articles, operators, loading, fetchInitialData, setupRealtime, updateSessionStatus } = useProductionStore();
+  const { t } = useLanguageStore();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -49,27 +51,27 @@ export function Production() {
     <div className="space-y-6 font-sans">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Suivi de Production</h1>
-          <p className="text-sm text-gray-500 font-medium mt-1">Suivi en temps réel des ordres et des équipes sur machines</p>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{t.production}</h1>
+          <p className="text-sm text-gray-500 font-medium mt-1">{t.overview}</p>
         </div>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 card-shadow overflow-hidden">
         <div className="p-6 border-b border-gray-200 flex justify-between items-center bg-gray-50/50">
-          <h3 className="font-bold text-gray-900 text-lg">Sessions & Ordres de Fabrication</h3>
+          <h3 className="font-bold text-gray-900 text-lg">{t.manufacturing_orders}</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                <th className="p-4">Lot</th>
-                <th className="p-4">Machine</th>
-                <th className="p-4">Article</th>
-                <th className="p-4">Équipe Opérateurs</th>
-                <th className="p-4">Début</th>
-                <th className="p-4">Fin</th>
-                <th className="p-4">Statut</th>
-                <th className="p-4 text-right">Actions</th>
+                <th className="p-4">{t.lot_no}</th>
+                <th className="p-4">{t.machine}</th>
+                <th className="p-4">{t.articles}</th>
+                <th className="p-4">{t.operator}</th>
+                <th className="p-4">{t.date}</th>
+                <th className="p-4">{t.time}</th>
+                <th className="p-4">{t.status}</th>
+                <th className="p-4 text-right">{t.actions}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-sm">

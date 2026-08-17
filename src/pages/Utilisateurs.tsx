@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { useUsersStore } from '../store/users';
+import { useLanguageStore } from '../store/language';
 import { hashPassword } from '../utils/crypto';
 
 export function Utilisateurs() {
   const { users, loading, error, fetchUsers, updateUserStatus, addOperator, updateUser, deleteUser } = useUsersStore();
+  const { t } = useLanguageStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -130,15 +132,15 @@ export function Utilisateurs() {
     <>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Utilisateurs & Personnel</h1>
-          <p className="text-sm text-gray-500 font-medium mt-1">Gérez les accès, rôles et codes PIN de votre équipe</p>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{t.users}</h1>
+          <p className="text-sm text-gray-500 font-medium mt-1">{t.overview}</p>
         </div>
         <div className="flex items-center gap-4 w-full sm:w-auto">
           <div className="relative w-full sm:w-64">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-[20px]">search</span>
             <input 
               type="text" 
-              placeholder="Rechercher..." 
+              placeholder={t.search} 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
@@ -146,7 +148,7 @@ export function Utilisateurs() {
           </div>
           <button onClick={handleAddClick} className="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-md font-medium text-sm transition-colors flex items-center gap-2 shadow-sm whitespace-nowrap">
             <span className="material-symbols-outlined text-[18px]" data-icon="person_add">person_add</span>
-            Ajouter Utilisateur
+            {t.add}
           </button>
         </div>
       </div>
@@ -156,12 +158,12 @@ export function Utilisateurs() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200 table-header-sticky">
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Nom</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.operator}</th>
                 <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
                 <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Rôle</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Code PIN</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Statut</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Actions</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.pin_code}</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.status}</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">{t.actions}</th>
               </tr>
             </thead>
             <tbody className="text-sm divide-y divide-gray-100">

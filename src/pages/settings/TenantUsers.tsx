@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useTenantStore } from '../../store/tenantStore';
+import { useLanguageStore } from '../../store/language';
 import type { OrgRole } from '../../types/saas';
 import toast from 'react-hot-toast';
 
@@ -16,6 +17,7 @@ interface MemberItem {
 
 export function TenantUsers() {
   const { currentOrg, canCreateUser, fetchTenantData } = useTenantStore();
+  const { t } = useLanguageStore();
   const [members, setMembers] = useState<MemberItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
@@ -144,9 +146,9 @@ export function TenantUsers() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-black text-zinc-900 tracking-tight">Membres & Rôles</h1>
+          <h1 className="text-2xl font-black text-zinc-900 tracking-tight">{t.team_members}</h1>
           <p className="text-sm text-zinc-500 font-medium mt-1">
-            Gérez les comptes managers et administrateurs ayant accès à l'espace de votre usine.
+            {t.overview}
           </p>
         </div>
         <button
@@ -154,7 +156,7 @@ export function TenantUsers() {
           className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl shadow-md transition-all flex items-center gap-2"
         >
           <span className="material-symbols-outlined text-[18px]">person_add</span>
-          <span>Inviter un Membre</span>
+          <span>{t.add}</span>
         </button>
       </div>
 
@@ -164,11 +166,11 @@ export function TenantUsers() {
           <table className="w-full text-left text-sm">
             <thead className="bg-zinc-50 text-zinc-500 text-xs font-bold uppercase border-b border-zinc-200">
               <tr>
-                <th className="p-4">Utilisateur</th>
+                <th className="p-4">{t.operator}</th>
                 <th className="p-4">Email</th>
                 <th className="p-4">Rôle</th>
-                <th className="p-4">Statut</th>
-                <th className="p-4 text-right">Actions</th>
+                <th className="p-4">{t.status}</th>
+                <th className="p-4 text-right">{t.actions}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">

@@ -3,11 +3,13 @@ import toast from 'react-hot-toast';
 import { useMaintenanceStore } from '../store/maintenance';
 import { useProductionStore } from '../store/production';
 import { useStopsStore } from '../store/stops';
+import { useLanguageStore } from '../store/language';
 
 export const Maintenance = () => {
   const { records, loading, fetchRecords, addRecord } = useMaintenanceStore();
   const { machines, fetchInitialData } = useProductionStore();
   const { stops, fetchStops } = useStopsStore();
+  const { t } = useLanguageStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   
   const [formData, setFormData] = useState({
@@ -88,41 +90,41 @@ export const Maintenance = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Maintenance & Diagnostic Prédictif</h1>
-          <p className="text-sm text-slate-500 font-medium mt-1">Planification des interventions et surveillance de santé des équipements</p>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">{t.maintenance}</h1>
+          <p className="text-sm text-slate-500 font-medium mt-1">{t.overview}</p>
         </div>
         <button 
           onClick={() => setIsModalOpen(true)} 
           className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm transition-colors shadow-sm flex items-center gap-2"
         >
           <span className="material-symbols-outlined text-[18px]">add</span>
-          Nouvelle Intervention
+          {t.add}
         </button>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs">
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Interventions Ouvertes</p>
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{t.in_progress}</p>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-black text-amber-600">{openRecords}</span>
-            <span className="text-xs text-slate-400 font-medium">en attente</span>
+            <span className="text-xs text-slate-400 font-medium">{t.in_progress}</span>
           </div>
         </div>
 
         <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs">
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Interventions Terminées</p>
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{t.completed}</p>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-black text-emerald-600">{completedRecords}</span>
-            <span className="text-xs text-slate-400 font-medium">ce mois</span>
+            <span className="text-xs text-slate-400 font-medium">{t.month}</span>
           </div>
         </div>
 
         <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs">
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Machines Sous Intervention</p>
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{t.machines}</p>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-black text-blue-600">{machinesInMaintenance}</span>
-            <span className="text-xs text-slate-400 font-medium">sur {machines.length}</span>
+            <span className="text-xs text-slate-400 font-medium">/ {machines.length}</span>
           </div>
         </div>
       </div>

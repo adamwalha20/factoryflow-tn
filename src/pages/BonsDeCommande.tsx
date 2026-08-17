@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useMesStore } from '../store/mesStore';
+import { useLanguageStore } from '../store/language';
 import toast from 'react-hot-toast';
 
 export function BonsDeCommande() {
   const { bons_de_commande, articles, loading, error, fetchInitialData, addBonDeCommande, updateBonDeCommande, deleteBonDeCommande } = useMesStore();
+  const { t } = useLanguageStore();
 
   const initialFormState = {
     bc_number: '',
@@ -118,15 +120,15 @@ export function BonsDeCommande() {
     <div className="space-y-6 animate-in fade-in zoom-in duration-300">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Bons de Commande</h1>
-          <p className="text-sm text-gray-500 font-medium mt-1">Gérer les commandes clients</p>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{t.purchase_orders}</h1>
+          <p className="text-sm text-gray-500 font-medium mt-1">{t.overview}</p>
         </div>
         <button 
           onClick={handleAddClick}
           className="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-md font-medium text-sm transition-colors flex items-center gap-2 shadow-sm"
         >
           <span className="material-symbols-outlined text-[18px]">add</span>
-          Nouveau Bon
+          {t.add}
         </button>
       </div>
 
@@ -135,13 +137,13 @@ export function BonsDeCommande() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200 table-header-sticky">
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">N° BC</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Client</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Article (Réf / Désign)</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Qté</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Date de livraison</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Statut</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Actions</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.purchase_orders}</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.client}</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.articles}</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.quantity}</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.date}</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.status}</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">{t.actions}</th>
               </tr>
             </thead>
             <tbody>

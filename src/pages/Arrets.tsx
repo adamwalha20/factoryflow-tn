@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { useStopsStore } from '../store/stops';
 import { useProductionStore } from '../store/production';
+import { useLanguageStore } from '../store/language';
 
 const MOTIFS = [
   { id: 'panne', label: 'Panne mécanique', icon: 'build' },
@@ -15,6 +16,7 @@ const MOTIFS = [
 const Arrets = () => {
   const { stops, fetchStops, declareStop, resolveStop, loading } = useStopsStore();
   const { machines, fetchInitialData } = useProductionStore();
+  const { t } = useLanguageStore();
 
   const [machineId, setMachineId] = useState('');
   const [motif, setMotif] = useState('');
@@ -67,8 +69,8 @@ const Arrets = () => {
 <div className="max-w-7xl mx-auto space-y-card-gap">
 
 <div className="flex flex-col gap-2">
-<h2 className="font-headline-lg text-headline-lg text-on-surface">Déclaration des Arrêts</h2>
-<p className="text-on-surface-variant">Enregistrez rapidement un arrêt de production pour la ligne active.</p>
+<h2 className="font-headline-lg text-headline-lg text-on-surface">{t.machine_stops}</h2>
+<p className="text-on-surface-variant">{t.overview}</p>
 </div>
 
 <div className="bg-surface-container-lowest rounded-xl border border-outline-variant p-6 shadow-sm">
@@ -76,9 +78,9 @@ const Arrets = () => {
 
 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 <div>
-<label className="block font-label-md text-label-md text-on-surface mb-2">Machine</label>
+<label className="block font-label-md text-label-md text-on-surface mb-2">{t.machine}</label>
 <select value={machineId} onChange={e => setMachineId(e.target.value)} className="w-full bg-surface border-1.5 border-outline-variant rounded-lg px-4 py-3 focus:ring-primary focus:border-primary text-on-surface min-h-[48px]">
-<option value="">Sélectionner une machine</option>
+<option value="">{t.machine}</option>
 {machines.map(m => (
   <option key={m.id} value={m.id}>{m.name} {m.code ? `(${m.code})` : ''}</option>
 ))}
@@ -87,7 +89,7 @@ const Arrets = () => {
 </div>
 
 <div>
-<label className="block font-label-md text-label-md text-on-surface mb-4">Motif de l'arrêt</label>
+<label className="block font-label-md text-label-md text-on-surface mb-4">{t.defect_reason}</label>
 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
 {MOTIFS.map(m => (
   <label key={m.id} className="motif-card cursor-pointer relative">
@@ -106,8 +108,8 @@ const Arrets = () => {
 <div className="flex justify-end pt-4 border-t border-outline-variant">
 <button className="bg-primary text-on-primary font-label-md text-label-md font-bold rounded-lg px-8 py-4 h-14 hover:bg-primary/90 transition-colors flex items-center gap-2" type="submit">
 <span className="material-symbols-outlined">save</span>
-                                Enregistrer l'arrêt
-                            </button>
+  {t.save}
+</button>
 </div>
 </form>
 </div>

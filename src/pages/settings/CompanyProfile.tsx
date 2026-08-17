@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useTenantStore } from '../../store/tenantStore';
+import { useLanguageStore } from '../../store/language';
 import toast from 'react-hot-toast';
 
 export function CompanyProfile() {
   const { currentOrg, updateCurrentOrg } = useTenantStore();
+  const { t } = useLanguageStore();
 
   const [formData, setFormData] = useState({
     name: '',
@@ -83,9 +85,9 @@ export function CompanyProfile() {
   return (
     <div className="space-y-8 font-sans">
       <div>
-        <h1 className="text-2xl font-black text-zinc-900 tracking-tight">Profil & Paramètres de l'Usine</h1>
+        <h1 className="text-2xl font-black text-zinc-900 tracking-tight">{t.company_profile}</h1>
         <p className="text-sm text-zinc-500 font-medium mt-1">
-          Coordonnées légales, paramètres régionaux et comptes dédiés aux terminaux d'atelier.
+          {t.overview}
         </p>
       </div>
 

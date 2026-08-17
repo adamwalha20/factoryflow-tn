@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useMesStore } from '../store/mesStore';
+import { useLanguageStore } from '../store/language';
 import { useSearchParams } from 'react-router-dom';
-
 import toast from 'react-hot-toast';
-
 import { printLabel, printAllLabels, printLotLabel } from '../utils/printLabel';
 
 export function Cartons() {
   const { cartons, orders, articles, fetchInitialData, loading, deleteCarton } = useMesStore();
+  const { t } = useLanguageStore();
 
   useEffect(() => {
     fetchInitialData();
@@ -108,15 +108,15 @@ export function Cartons() {
     <div className="space-y-6 animate-in fade-in zoom-in duration-300">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Cartons Management</h1>
-          <p className="text-sm text-gray-500 font-medium mt-1">Traceability and label printing</p>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{t.cartons_labels}</h1>
+          <p className="text-sm text-gray-500 font-medium mt-1">{t.overview}</p>
         </div>
         {hasFilter && (
           <div className="flex gap-3">
             <button 
               onClick={() => {
                 const highlightedCartons = cartons.filter(isCartonInSession);
-                if (highlightedCartons.length === 0) return toast.error("Aucun carton produit complet trouvé pour ce lot");
+                if (highlightedCartons.length === 0) return toast.error("Aucun carton trouvé");
                 
                 const order = orders.find(o => o.id === highlightedCartons[0].of_id);
                 const article = articles.find(a => a.id === highlightedCartons[0].article_id);
@@ -127,17 +127,17 @@ export function Cartons() {
                 const lotName = lotParam || `LOT-${dateStr}-${order?.of_number || 'LOT'}`;
                 
                 printLotLabel(lotName, totalQty, article, order, effectiveStart, effectiveStart, sessionEnd, (sessionArticle || article?.id)!);
-                toast.success(`Impression de l'étiquette maître pour le lot en cours...`);
+                toast.success(t.print_lot);
               }}
               className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium shadow-sm transition-colors flex items-center gap-2"
             >
               <span className="material-symbols-outlined text-[20px]">print</span>
-              Imprimer l'étiquette globale du Lot
+              {t.print_lot}
             </button>
             <button 
               onClick={() => {
                 const highlightedCartons = cartons.filter(isCartonInSession);
-                if (highlightedCartons.length === 0) return toast.error("Aucun carton produit complet trouvé pour ce lot");
+                if (highlightedCartons.length === 0) return toast.error("Aucun carton trouvé");
                 
                 const itemsToPrint = highlightedCartons.map(carton => {
                   const order = orders.find(o => o.id === carton.of_id);
@@ -146,12 +146,12 @@ export function Cartons() {
                 });
                 
                 printAllLabels(itemsToPrint);
-                toast.success(`Impression de ${itemsToPrint.length} étiquettes en cours...`);
+                toast.success(t.print_all);
               }}
               className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium shadow-sm transition-colors flex items-center gap-2"
             >
               <span className="material-symbols-outlined text-[20px]">layers</span>
-              Imprimer toutes les étiquettes
+              {t.print_all}
             </button>
           </div>
         )}
@@ -161,12 +161,12 @@ export function Cartons() {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200 table-header-sticky">
-              <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Carton No</th>
-              <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Order</th>
-              <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Article</th>
-              <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Quantity</th>
-              <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Actions</th>
+              <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.carton_no}</th>
+              <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.order}</th>
+              <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.articles}</th>
+              <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.good_quantity}</th>
+              <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.status}</th>
+              <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">{t.actions}</th>
             </tr>
           </thead>
           <tbody className="text-sm divide-y divide-gray-100">

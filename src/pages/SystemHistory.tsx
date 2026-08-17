@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useAuditStore, AuditLog } from '../store/audit';
+import { useLanguageStore } from '../store/language';
 import toast from 'react-hot-toast';
 
 export function SystemHistory() {
   const { logs, loading, error, fetchLogs, undoChange, subscribeToLogs } = useAuditStore();
+  const { t } = useLanguageStore();
   const [undoingId, setUndoingId] = useState<string | null>(null);
   const [logToUndo, setLogToUndo] = useState<AuditLog | null>(null);
 
@@ -91,12 +93,12 @@ export function SystemHistory() {
     <div className="space-y-6 animate-in fade-in zoom-in duration-300">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Journal d'Audit Système</h1>
-          <p className="text-sm text-gray-500 font-medium mt-1">Traceabilité complète des actions et annulations</p>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{t.system_history}</h1>
+          <p className="text-sm text-gray-500 font-medium mt-1">{t.overview}</p>
         </div>
         <button onClick={() => fetchLogs()} className="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-md shadow-sm hover:bg-gray-50 flex items-center gap-2 font-medium text-sm transition-colors">
           <span className="material-symbols-outlined text-[18px]">refresh</span>
-          Actualiser
+          {t.filter}
         </button>
       </div>
 
@@ -105,12 +107,12 @@ export function SystemHistory() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200 table-header-sticky">
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider w-48">Date & Heure</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider w-32">Table</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider w-32">Action</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider w-48">{t.date} &amp; {t.time}</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider w-32">Module</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider w-32">{t.actions}</th>
                 <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Détails</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider w-48">Utilisateur</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right w-32">Annuler</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider w-48">{t.operator}</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right w-32">{t.cancel}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">

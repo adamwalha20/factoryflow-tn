@@ -35,6 +35,7 @@ export const translations = {
 
     // Common Actions
     add: 'Ajouter',
+    new: 'Nouveau',
     edit: 'Modifier',
     delete: 'Supprimer',
     save: 'Enregistrer',
@@ -58,6 +59,19 @@ export const translations = {
     days: 'Jours',
     month: 'Mois',
     year: 'Année',
+    client: 'Client',
+
+    // Common Fields
+    reference: 'Référence',
+    designation: 'Désignation',
+    category: 'Catégorie',
+    width: 'Largeur',
+    length: 'Longueur',
+    weight: 'Poids',
+    unit: 'Unité',
+    quantity: 'Quantité',
+    time: 'Heure',
+    date: 'Date',
 
     // Production & Scrap
     target: 'Objectif',
@@ -69,7 +83,6 @@ export const translations = {
     operator: 'Opérateur',
     machine: 'Machine',
     order: 'Ordre de Fabrication',
-    date: 'Date',
 
     // Scrap Reasons
     MACHINE_SETUP: 'Réglage & Démarrage',
@@ -185,6 +198,7 @@ export const translations = {
 
     // Common Actions
     add: 'إضافة',
+    new: 'جديد',
     edit: 'تعديل',
     delete: 'حذف',
     save: 'حفظ',
@@ -208,6 +222,19 @@ export const translations = {
     days: 'أيام',
     month: 'الشهر',
     year: 'السنة',
+    client: 'الزبون / العميل',
+
+    // Common Fields
+    reference: 'المرجع / الكود',
+    designation: 'التسمية / الوصف',
+    category: 'الفئة / الصنف',
+    width: 'العرض',
+    length: 'الطول',
+    weight: 'الوزن',
+    unit: 'الوحدة',
+    quantity: 'الكمية',
+    time: 'الوقت',
+    date: 'التاريخ',
 
     // Production & Scrap
     target: 'الهدف المطلوب',
@@ -219,7 +246,6 @@ export const translations = {
     operator: 'العامل / المشغل',
     machine: 'الآلة',
     order: 'أمر الشغل',
-    date: 'التاريخ',
 
     // Scrap Reasons
     MACHINE_SETUP: 'ضبط وبداية تشغيل',
@@ -335,6 +361,7 @@ export const translations = {
 
     // Common Actions
     add: 'Add',
+    new: 'New',
     edit: 'Edit',
     delete: 'Delete',
     save: 'Save',
@@ -358,6 +385,19 @@ export const translations = {
     days: 'Days',
     month: 'Month',
     year: 'Year',
+    client: 'Client',
+
+    // Common Fields
+    reference: 'Reference',
+    designation: 'Designation',
+    category: 'Category',
+    width: 'Width',
+    length: 'Length',
+    weight: 'Weight',
+    unit: 'Unit',
+    quantity: 'Quantity',
+    time: 'Time',
+    date: 'Date',
 
     // Production & Scrap
     target: 'Target',
@@ -369,7 +409,6 @@ export const translations = {
     operator: 'Operator',
     machine: 'Machine',
     order: 'Order',
-    date: 'Date',
 
     // Scrap Reasons
     MACHINE_SETUP: 'Machine Setup',

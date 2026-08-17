@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useUsersStore } from '../store/users';
 import { useProductionStore } from '../store/production';
+import { useLanguageStore } from '../store/language';
 
 interface HistoryEntry {
   id: string;
@@ -26,6 +27,7 @@ const Historique = () => {
   const [loading, setLoading] = useState(true);
   const { users, fetchUsers } = useUsersStore();
   const { operators, fetchInitialData } = useProductionStore();
+  const { t } = useLanguageStore();
 
   useEffect(() => {
     fetchHistory();
@@ -111,12 +113,12 @@ const Historique = () => {
       <div className="p-container-padding max-w-[1440px] mx-auto space-y-card-gap animate-in fade-in zoom-in duration-300">
         <div className="flex justify-between items-end mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 tracking-tight mb-2">Historique de Production</h1>
-            <p className="text-sm text-gray-500 font-medium">Consultez et analysez les données de production passées.</p>
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight mb-2">{t.production_history}</h1>
+            <p className="text-sm text-gray-500 font-medium">{t.overview}</p>
           </div>
-          <button onClick={() => toast.success('Exportation en cours...')} className="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-md font-medium text-sm transition-colors flex items-center gap-2 shadow-sm">
+          <button onClick={() => toast.success(t.export)} className="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-md font-medium text-sm transition-colors flex items-center gap-2 shadow-sm">
             <span className="material-symbols-outlined text-[18px]">download</span>
-            Exporter Données
+            {t.export}
           </button>
         </div>
 
@@ -125,13 +127,13 @@ const Historique = () => {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Date &amp; Heure</th>
-                  <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Opérateurs (Équipe)</th>
-                  <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Machine</th>
-                  <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Produit / OF</th>
-                  <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Quantité Produite</th>
-                  <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Déchets</th>
-                  <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Rendement (TRS)</th>
+                  <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.date} &amp; {t.time}</th>
+                  <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.operator}</th>
+                  <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.machine}</th>
+                  <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.order}</th>
+                  <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">{t.good_quantity}</th>
+                  <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">{t.scrap_quantity}</th>
+                  <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">{t.efficiency}</th>
                 </tr>
               </thead>
               <tbody className="text-sm divide-y divide-gray-100">

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useRawMaterialsStore } from '../store/rawMaterials';
+import { useLanguageStore } from '../store/language';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -16,6 +17,7 @@ export function RawMaterials() {
     deleteMaterial,
     recordTransaction 
   } = useRawMaterialsStore();
+  const { t } = useLanguageStore();
 
   const [activeTab, setActiveTab] = useState<'stock' | 'ledger' | 'yield'>('stock');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -162,8 +164,8 @@ export function RawMaterials() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Matières Premières & Stock</h1>
-          <p className="text-sm text-slate-500 font-medium mt-1">Gestion des stocks et registre immuable des mouvements</p>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">{t.raw_materials}</h1>
+          <p className="text-sm text-slate-500 font-medium mt-1">{t.overview}</p>
         </div>
         <div className="flex items-center gap-3">
           <button 
@@ -178,7 +180,7 @@ export function RawMaterials() {
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-lg transition-colors flex items-center gap-2 shadow-sm"
           >
             <span className="material-symbols-outlined text-[18px]">add</span>
-            Nouvelle Matière
+            {t.add}
           </button>
         </div>
       </div>
@@ -189,15 +191,15 @@ export function RawMaterials() {
           <div className="flex items-center gap-3">
             <span className="material-symbols-outlined text-amber-600 text-2xl">warning</span>
             <div>
-              <p className="text-sm font-bold text-amber-900">{lowStockCount} matière(s) première(s) sous le seuil d'alerte</p>
-              <p className="text-xs text-amber-700">Pensez à passer commande ou enregistrer une réception fournisseur.</p>
+              <p className="text-sm font-bold text-amber-900">{lowStockCount} {t.raw_materials}</p>
+              <p className="text-xs text-amber-700">{t.target}</p>
             </div>
           </div>
           <button
             onClick={() => setOnlyLowStock(!onlyLowStock)}
             className="px-3 py-1.5 bg-amber-200/80 hover:bg-amber-300 text-amber-900 text-xs font-semibold rounded-lg transition-colors"
           >
-            {onlyLowStock ? 'Afficher tout' : 'Filtrer alertes'}
+            {onlyLowStock ? 'All' : t.filter}
           </button>
         </div>
       )}
@@ -213,7 +215,7 @@ export function RawMaterials() {
           }`}
         >
           <span className="material-symbols-outlined text-[18px]">inventory_2</span>
-          Niveau de Stock ({materials.length})
+          {t.raw_materials} ({materials.length})
         </button>
         <button
           onClick={() => setActiveTab('ledger')}
@@ -224,7 +226,7 @@ export function RawMaterials() {
           }`}
         >
           <span className="material-symbols-outlined text-[18px]">receipt_long</span>
-          Journal des Mouvements ({transactions.length})
+          {t.system_history} ({transactions.length})
         </button>
         <button
           onClick={() => setActiveTab('yield')}
@@ -235,7 +237,7 @@ export function RawMaterials() {
           }`}
         >
           <span className="material-symbols-outlined text-[18px]">monitoring</span>
-          Consommations & Rendement ({consumptions.length})
+          {t.efficiency} ({consumptions.length})
         </button>
       </div>
 

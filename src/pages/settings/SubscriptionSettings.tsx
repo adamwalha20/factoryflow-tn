@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useTenantStore } from '../../store/tenantStore';
+import { useLanguageStore } from '../../store/language';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 
 export function SubscriptionSettings() {
   const { currentOrg, currentSubscription, plans, usage, fetchTenantData, fetchPlans } = useTenantStore();
+  const { t } = useLanguageStore();
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [selectedPlanSlug, setSelectedPlanSlug] = useState<string>('professional');
   const [isUpdating, setIsUpdating] = useState(false);
@@ -73,9 +75,9 @@ export function SubscriptionSettings() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-black text-zinc-900 tracking-tight">Forfait & Facturation SaaS</h1>
+        <h1 className="text-2xl font-black text-zinc-900 tracking-tight">{t.subscription_quotas}</h1>
         <p className="text-sm text-zinc-500 font-medium mt-1">
-          Gérez votre abonnement FactoryFlow TN et surveillez vos quotas d'utilisation en temps réel.
+          {t.overview}
         </p>
       </div>
 

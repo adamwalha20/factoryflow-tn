@@ -2,10 +2,12 @@ import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useProductionStore } from '../store/production';
 import { useTenantStore } from '../store/tenantStore';
+import { useLanguageStore } from '../store/language';
 
 export function Machines() {
   const { machines, fetchInitialData, loading, addMachine, updateMachine, deleteMachine } = useProductionStore();
   const { currentOrg } = useTenantStore();
+  const { t } = useLanguageStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMachineId, setEditingMachineId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ name: '', location: '', status: 'Active' });
@@ -25,9 +27,9 @@ export function Machines() {
     if (deletingMachineId) {
       try {
         await deleteMachine(deletingMachineId);
-        toast.success('Machine supprimée avec succès');
+        toast.success(t.confirm_delete);
       } catch (err: any) {
-        toast.error('Erreur lors de la suppression : ' + (err.message || ''));
+        toast.error(err.message || '');
       } finally {
         setDeletingMachineId(null);
       }
@@ -43,10 +45,9 @@ export function Machines() {
     e.stopPropagation();
     setFormData({
       name: m.name,
-      code: m.code || '',
       location: m.department || '',
       status: m.status || 'Active'
-    } as any);
+    });
     setEditingMachineId(m.id);
     setIsModalOpen(true);
   };
@@ -57,34 +58,26 @@ export function Machines() {
   };
 
   const handleAddClick = () => {
-    setFormData({ name: '', code: '', location: '', status: 'Active' } as any);
+    setFormData({ name: '', location: '', status: 'Active' });
     setEditingMachineId(null);
     setIsModalOpen(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.name.trim()) return toast.error('Nom requis');
     try {
       if (editingMachineId) {
-        await updateMachine(editingMachineId, {
-          name: formData.name,
-          code: (formData as any).code,
-          department: (formData as any).department || formData.location,
-          status: formData.status
-        } as any);
-        toast.success('Machine modifiée avec succès');
+        await updateMachine(editingMachineId, formData);
+        toast.success(t.save);
       } else {
-        await addMachine({
-          name: formData.name,
-          code: (formData as any).code,
-          department: (formData as any).department || formData.location,
-          status: formData.status
-        } as any);
-        toast.success('Machine ajoutée avec succès');
+        await addMachine(formData);
+        toast.success(t.add);
       }
       setIsModalOpen(false);
+      setEditingMachineId(null);
     } catch (err: any) {
-      toast.error(err.message || (editingMachineId ? 'Erreur lors de la modification' : 'Erreur lors de l\'ajout de la machine'));
+      toast.error(err.message || 'Erreur');
     }
   };
 
@@ -96,27 +89,27 @@ export function Machines() {
   const copyTabletUrl = (machineId: string) => {
     const url = getTabletUrl(machineId);
     navigator.clipboard.writeText(url);
-    toast.success('Lien du poste copié ! Ouvrez-le sur la tablette.');
+    toast.success('Lien copié');
   };
 
   return (
     <div className="space-y-6 font-sans">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Parc Machines & Postes</h1>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{t.machines}</h1>
           <p className="text-sm text-gray-500 font-medium mt-1">
-            Gérez vos équipements industriels et associez chaque tablette tactile à sa machine dédiée.
+            {t.overview}
           </p>
         </div>
         <button onClick={handleAddClick} className="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center gap-2 shadow-sm">
           <span className="material-symbols-outlined text-[18px]">add</span>
-          Ajouter une Machine
+          {t.add}
         </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {loading ? (
-          <div className="col-span-full p-8 text-center text-gray-500">Chargement du parc machine...</div>
+          <div className="col-span-full p-8 text-center text-gray-500">{t.loading}</div>
         ) : machines.length === 0 ? (
           <div className="col-span-full p-12 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-300 space-y-3">
             <span className="material-symbols-outlined text-4xl text-gray-400">precision_manufacturing</span>
