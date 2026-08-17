@@ -4,6 +4,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { useMesStore } from '../store/mesStore';
 import { useProductionStore } from '../store/production';
 import { useStopsStore } from '../store/stops';
+import { useLanguageStore } from '../store/language';
 import { generateDailyExecutiveDigest } from '../lib/ai';
 import { format, startOfToday, startOfMonth } from 'date-fns';
 
@@ -46,6 +47,7 @@ export function Dashboard() {
   const { orders, production_entries, fetchInitialData, setupRealtime } = useMesStore();
   const { machines, fetchInitialData: fetchProdData, operators } = useProductionStore();
   const { stops, fetchStops } = useStopsStore();
+  const { t } = useLanguageStore();
 
   const [dailyDigest, setDailyDigest] = useState<string | null>(null);
   const [loadingDigest, setLoadingDigest] = useState(false);
@@ -228,11 +230,11 @@ export function Dashboard() {
         <div className="relative z-10">
           <div className="flex items-center gap-2 text-blue-300 text-xs font-bold uppercase tracking-widest mb-1">
             <span className="material-symbols-outlined text-[16px]">factory</span>
-            Usine Principale Tunis
+            {t.factory_portal}
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Supervision & Tableau de Bord</h1>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">{t.dash_header_title}</h1>
           <p className="text-blue-200 text-xs sm:text-sm mt-1 max-w-xl">
-            Suivi des cadences en temps réel, alertes prédictives machines et synthèse d'atelier par IA.
+            {t.dash_header_sub}
           </p>
         </div>
         <div className="relative z-10 flex items-center gap-3">
@@ -244,12 +246,12 @@ export function Dashboard() {
             {loadingDigest ? (
               <>
                 <span className="material-symbols-outlined text-[20px] animate-spin">refresh</span>
-                Génération...
+                {t.loading}
               </>
             ) : (
               <>
                 <span className="material-symbols-outlined text-[20px]">auto_awesome</span>
-                Briefing Exécutif (IA)
+                {t.dash_ai_btn}
               </>
             )}
           </button>
@@ -262,7 +264,7 @@ export function Dashboard() {
           <div className="flex justify-between items-center pb-4 border-b border-slate-100 mb-4">
             <div className="flex items-center gap-2 text-blue-700 font-bold text-base">
               <span className="material-symbols-outlined text-blue-600">psychology</span>
-              Briefing Exécutif Journalier
+              {t.dash_ai_btn}
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -270,7 +272,7 @@ export function Dashboard() {
                 className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1"
               >
                 <span className="material-symbols-outlined text-[16px]">content_copy</span>
-                Copier
+                {t.save}
               </button>
               <button
                 onClick={() => setDailyDigest(null)}
@@ -291,7 +293,7 @@ export function Dashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-xs hover:shadow-md transition-all">
           <div className="flex justify-between items-start mb-2">
-            <span className="text-slate-500 font-bold text-xs uppercase tracking-wider">Production Jour</span>
+            <span className="text-slate-500 font-bold text-xs uppercase tracking-wider">{t.dash_today_prod}</span>
             <span className="flex items-center text-emerald-700 text-xs font-bold gap-1 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
               <span className="material-symbols-outlined text-[14px]">trending_up</span> +5.2%
             </span>
@@ -300,13 +302,13 @@ export function Dashboard() {
             <h3 className="text-2xl font-black text-slate-900 tracking-tight">
               {stats.todayProd.toLocaleString()}
             </h3>
-            <span className="text-slate-400 text-xs font-medium">unités</span>
+            <span className="text-slate-400 text-xs font-medium">{t.units}</span>
           </div>
         </div>
 
         <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-xs hover:shadow-md transition-all">
           <div className="flex justify-between items-start mb-2">
-            <span className="text-slate-500 font-bold text-xs uppercase tracking-wider">Taux de Rebut</span>
+            <span className="text-slate-500 font-bold text-xs uppercase tracking-wider">{t.dash_scrap_rate}</span>
             <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${Number(stats.wasteRate) > 3 ? 'bg-red-50 text-red-700 border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
               Target &lt; 3%
             </span>
@@ -315,13 +317,13 @@ export function Dashboard() {
             <h3 className="text-2xl font-black text-slate-900 tracking-tight">
               {stats.wasteRate}%
             </h3>
-            <span className="text-slate-400 text-xs font-medium">({stats.waste} unités)</span>
+            <span className="text-slate-400 text-xs font-medium">({stats.waste} {t.units})</span>
           </div>
         </div>
 
         <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-xs hover:shadow-md transition-all">
           <div className="flex justify-between items-start mb-2">
-            <span className="text-slate-500 font-bold text-xs uppercase tracking-wider">Rendement OEE</span>
+            <span className="text-slate-500 font-bold text-xs uppercase tracking-wider">{t.dash_oee}</span>
             <span className="flex items-center text-blue-700 text-xs font-bold gap-1 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
               Optimal
             </span>
@@ -335,14 +337,14 @@ export function Dashboard() {
 
         <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-xs hover:shadow-md transition-all">
           <div className="flex justify-between items-start mb-2">
-            <span className="text-slate-500 font-bold text-xs uppercase tracking-wider">Machines en Ligne</span>
-            <span className="text-slate-500 text-xs font-bold">{stats.activeMachines}/{machines.length} actives</span>
+            <span className="text-slate-500 font-bold text-xs uppercase tracking-wider">{t.dash_active_machines}</span>
+            <span className="text-slate-500 text-xs font-bold">{stats.activeMachines}/{machines.length}</span>
           </div>
           <div className="flex items-baseline gap-2">
             <h3 className="text-2xl font-black text-slate-900 tracking-tight">
               {stats.activeMachines}
             </h3>
-            <span className="text-slate-400 text-xs font-medium">machines actives</span>
+            <span className="text-slate-400 text-xs font-medium">{t.active}</span>
           </div>
         </div>
       </div>
@@ -353,12 +355,12 @@ export function Dashboard() {
           <div>
             <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
               <span className="material-symbols-outlined text-indigo-600">health_and_safety</span>
-              Santé Prédictive des Lignes de Production
+              {t.dash_health_title}
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">Indice calculé d'après les micro-arrêts, la fréquence des pannes et les heures de service.</p>
+            <p className="text-xs text-slate-500 mt-0.5">{t.dash_health_sub}</p>
           </div>
           <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100">
-            Algorithme Prédictif Actif
+            {t.active}
           </span>
         </div>
 
@@ -373,7 +375,7 @@ export function Dashboard() {
                     m.riskLevel === 'Attention' ? 'bg-amber-100 text-amber-800' :
                     'bg-emerald-100 text-emerald-800'
                   }`}>
-                    {m.score}% Santé
+                    {m.score}%
                   </span>
                 </div>
                 <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden mb-3">
@@ -389,8 +391,8 @@ export function Dashboard() {
                 </p>
               </div>
               <div className="text-[11px] text-slate-400 font-semibold pt-2 border-t border-slate-200 flex justify-between">
-                <span>{m.stopCount} arrêt(s) récents</span>
-                <span className={m.status === 'Active' ? 'text-emerald-600 font-bold' : 'text-slate-500'}>{m.status}</span>
+                <span>{m.stopCount} {t.machine_stops}</span>
+                <span className={m.status === 'Active' ? 'text-emerald-600 font-bold' : 'text-slate-500'}>{m.status === 'Active' ? t.active : t.stopped}</span>
               </div>
             </div>
           ))}
@@ -402,8 +404,8 @@ export function Dashboard() {
         <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-xs flex flex-col overflow-hidden">
           <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
             <div>
-              <h3 className="text-base font-bold text-slate-900 tracking-tight">Rendement Horaire de Production</h3>
-              <p className="text-xs text-slate-500 font-medium">Volume horaire vs Cible de quart (15k)</p>
+              <h3 className="text-base font-bold text-slate-900 tracking-tight">{t.dash_hourly_chart}</h3>
+              <p className="text-xs text-slate-500 font-medium">{t.production}</p>
             </div>
           </div>
           <div className="p-6 flex-1 flex items-center justify-center min-h-[280px] h-[280px] relative">
@@ -431,8 +433,8 @@ export function Dashboard() {
         {/* Downtime Reasons Pie/List */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 flex flex-col justify-between">
           <div>
-            <h3 className="text-base font-bold text-slate-900 tracking-tight mb-1">Causes d'Arrêt Cumulées</h3>
-            <p className="text-xs text-slate-500 mb-6">Total: <strong className="text-slate-900">{stopStats.total} heures</strong></p>
+            <h3 className="text-base font-bold text-slate-900 tracking-tight mb-1">{t.dash_stops_reasons}</h3>
+            <p className="text-xs text-slate-500 mb-6">{t.overview}: <strong className="text-slate-900">{stopStats.total} {t.hours}</strong></p>
             <div className="space-y-3">
               {stopStats.details.length > 0 ? stopStats.details.map((stat, i) => (
                 <div key={i} className="flex justify-between items-center p-2.5 bg-slate-50 rounded-xl">
@@ -443,7 +445,7 @@ export function Dashboard() {
                   <span className="text-xs font-bold text-slate-900">{stat.duration}h</span>
                 </div>
               )) : (
-                <div className="text-center text-slate-400 text-xs py-8">Aucun arrêt signalé aujourd'hui</div>
+                <div className="text-center text-slate-400 text-xs py-8">-</div>
               )}
             </div>
           </div>
@@ -454,19 +456,19 @@ export function Dashboard() {
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
           <div>
-            <h3 className="text-base font-bold text-slate-900">Derniers Enregistrements de Production</h3>
-            <p className="text-xs text-slate-500">Flux temps réel provenant des tablettes opérateurs</p>
+            <h3 className="text-base font-bold text-slate-900">{t.dash_recent_entries}</h3>
+            <p className="text-xs text-slate-500">{t.dash_recent_entries_sub}</p>
           </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                <th className="p-4">Heure</th>
-                <th className="p-4">Machine</th>
-                <th className="p-4">Ordre (OF)</th>
-                <th className="p-4">Opérateur</th>
-                <th className="p-4">Quantité</th>
+                <th className="p-4">{t.date}</th>
+                <th className="p-4">{t.machine}</th>
+                <th className="p-4">{t.order}</th>
+                <th className="p-4">{t.operator}</th>
+                <th className="p-4">{t.good_quantity}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm">

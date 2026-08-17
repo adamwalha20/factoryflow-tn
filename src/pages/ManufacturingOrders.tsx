@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useMesStore } from '../store/mesStore';
 import { useProductionStore } from '../store/production';
+import { useLanguageStore } from '../store/language';
 import toast from 'react-hot-toast';
 import { scheduleOrders } from '../lib/ai';
 
 export function ManufacturingOrders() {
   const { orders, articles, production_entries, bons_de_commande, loading, error, fetchInitialData, addOrder, updateOrder, deleteOrder, updateOrderStatus } = useMesStore();
   const { machines, fetchInitialData: fetchProductionData } = useProductionStore();
+  const { t } = useLanguageStore();
 
   const initialFormState = {
     of_number: '',
@@ -242,8 +244,8 @@ export function ManufacturingOrders() {
     <div className="space-y-6 animate-in fade-in zoom-in duration-300">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Ordres de Fabrication</h1>
-          <p className="text-sm text-gray-500 font-medium mt-1">Gérer le planning et les ordres de production</p>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{t.manufacturing_orders}</h1>
+          <p className="text-sm text-gray-500 font-medium mt-1">{t.overview}</p>
         </div>
         <div className="flex gap-3">
           <button 
@@ -256,14 +258,14 @@ export function ManufacturingOrders() {
             ) : (
               <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
             )}
-            Planification IA
+            {t.dash_ai_btn}
           </button>
           <button 
             onClick={handleAddClick}
             className="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-md font-medium text-sm transition-colors flex items-center gap-2 shadow-sm"
           >
             <span className="material-symbols-outlined text-[18px]">add</span>
-            Nouvel Ordre
+            {t.add}
           </button>
         </div>
       </div>
@@ -273,14 +275,14 @@ export function ManufacturingOrders() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200 table-header-sticky">
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">OF N°</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">BC N°</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.order}</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.purchase_orders}</th>
                 <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Client</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Article</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Machine</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Reste à produire</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Actions</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.articles}</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.machine}</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.status}</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.target}</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">{t.actions}</th>
               </tr>
             </thead>
             <tbody>
