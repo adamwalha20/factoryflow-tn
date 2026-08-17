@@ -10,7 +10,6 @@ export function SignUpPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { plans, fetchPlans } = useTenantStore();
-  const { setTestUser } = useAuthStore();
   const { theme, toggleTheme } = useThemeStore();
 
   const initialPlanSlug = searchParams.get('plan') || 'professional';
@@ -49,39 +48,67 @@ export function SignUpPage() {
     default_language: 'fr'
   });
 
-  const { user } = useAuthStore();
+  const { user, setTestUser } = useAuthStore();
 
   useEffect(() => {
     const checkOAuthUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       const currentUser = session?.user || user;
 
-      if (currentUser || searchParams.get('google') === '1' || searchParams.get('step') === '2') {
-        const metadata = currentUser?.user_metadata || {};
-        const fullName = metadata.full_name || metadata.name || currentUser?.email?.split('@')[0] || '';
-        const firstName = metadata.given_name || fullName.split(' ')[0] || '';
-        const lastName = metadata.family_name || fullName.split(' ').slice(1).join(' ') || '';
+      if (!currentUser) return;
 
-        setAccountForm(prev => ({
-          ...prev,
-          first_name: prev.first_name || firstName,
-          last_name: prev.last_name || lastName,
-          email: prev.email || currentUser?.email || '',
-          phone: prev.phone || metadata.phone || ''
-        }));
+      // 1. Check if user ALREADY HAS an existing factory account
+      const { data: existingEmp } = await (supabase as any)
+        .from('employees')
+        .select('*, organizations(*)')
+        .or(`user_id.eq.${currentUser.id},email.eq.${currentUser.email}`)
+        .maybeSingle();
 
-        setFactoryForm(prev => ({
-          ...prev,
-          email: prev.email || currentUser?.email || '',
-          phone: prev.phone || metadata.phone || ''
-        }));
+      if (existingEmp?.organization_id) {
+        localStorage.setItem('active_org_id', existingEmp.organization_id);
+        setTestUser({
+          id: existingEmp.user_id || currentUser.id,
+          first_name: existingEmp.first_name,
+          last_name: existingEmp.last_name,
+          role: existingEmp.role || 'Administrator',
+          organization_id: existingEmp.organization_id
+        });
 
-        setStep(2);
+        const org = existingEmp.organizations;
+        if (org && org.onboarding_completed) {
+          navigate('/admin');
+          return;
+        } else {
+          navigate('/onboarding');
+          return;
+        }
       }
+
+      // 2. If NEW user without a factory, show Step 2 with Google pre-filled profile
+      const metadata = currentUser.user_metadata || {};
+      const fullName = metadata.full_name || metadata.name || currentUser.email?.split('@')[0] || '';
+      const firstName = metadata.given_name || fullName.split(' ')[0] || '';
+      const lastName = metadata.family_name || fullName.split(' ').slice(1).join(' ') || '';
+
+      setAccountForm(prev => ({
+        ...prev,
+        first_name: prev.first_name || firstName,
+        last_name: prev.last_name || lastName,
+        email: prev.email || currentUser.email || '',
+        phone: prev.phone || metadata.phone || ''
+      }));
+
+      setFactoryForm(prev => ({
+        ...prev,
+        email: prev.email || currentUser.email || '',
+        phone: prev.phone || metadata.phone || ''
+      }));
+
+      setStep(2);
     };
 
     checkOAuthUser();
-  }, [user, searchParams]);
+  }, [user, searchParams, navigate, setTestUser]);
 
   useEffect(() => {
     fetchPlans();
@@ -201,7 +228,7 @@ export function SignUpPage() {
         authUserId = authData?.user?.id || crypto.randomUUID();
       }
 
-      // 1. Create organization in public.organizations
+      // 1. Create organization in public.organizations with onboarding_completed = false
       await (supabase as any)
         .from('organizations')
         .insert([
@@ -225,8 +252,8 @@ export function SignUpPage() {
             production_type: factoryForm.production_type,
             timezone: factoryForm.timezone,
             default_language: factoryForm.default_language,
-            onboarding_completed: true,
-            onboarding_step: 5
+            onboarding_completed: false,
+            onboarding_step: 1
           }
         ]);
 
@@ -281,8 +308,8 @@ export function SignUpPage() {
         organization_id: orgId
       });
 
-      toast.success('Votre Espace Usine a été activé avec succès ! Bienvenue.');
-      navigate('/admin');
+      toast.success('Informations enregistrées ! Bienvenue dans la configuration express de votre usine.');
+      navigate('/onboarding');
 
     } catch (err: any) {
       console.error('Signup failed', err);
