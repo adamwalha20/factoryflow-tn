@@ -234,7 +234,7 @@ export function Login() {
       const { error: oauthErr } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/admin`
+          redirectTo: `${window.location.origin}/signup?step=2&google=1`
         }
       });
       if (oauthErr) throw oauthErr;

@@ -105,67 +105,21 @@ async function resolveUserProfile(user: User, set: any) {
       }
     }
 
-    // 3. If new user (no existing profile in database for this email/id)
-    if (!employee) {
-      const metadata = user.user_metadata || {};
-      const fullName = metadata.full_name || metadata.name || user.email?.split('@')[0] || 'Nouvel Utilisateur';
-      const firstName = metadata.given_name || fullName.split(' ')[0] || 'Utilisateur';
-      const lastName = metadata.family_name || fullName.split(' ').slice(1).join(' ') || '';
-
-      // ALWAYS create a brand new isolated organization for this new user
-      const newOrgId = crypto.randomUUID();
-      const orgSlug = `factory-${Date.now().toString(36)}-${Math.floor(Math.random() * 1000)}`;
-
-      await (supabase as any).from('organizations').insert([{
-        id: newOrgId,
-        name: `${firstName} - Usine`,
-        slug: orgSlug,
-        legal_name: `${firstName} - Usine`,
-        city: 'Tunis',
-        country: 'Tunisia',
-        onboarding_completed: false,
-        onboarding_step: 1
-      }]);
-
-      // Create subscription trial
-      await (supabase as any).from('subscriptions').insert([{
-        organization_id: newOrgId,
-        plan_id: '2',
-        status: 'TRIALING',
-        trial_start: new Date().toISOString(),
-        trial_end: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
-      }]);
-
-      const newEmployee = {
-        id: crypto.randomUUID(),
-        user_id: user.id,
-        first_name: firstName,
-        last_name: lastName,
-        email: user.email,
-        role: 'Administrator' as const,
-        organization_id: newOrgId
-      };
-
-      await (supabase as any).from('employees').insert([newEmployee]);
-      await (supabase as any).from('users').insert([{
-        id: newEmployee.id,
-        organization_id: newOrgId,
-        name: `${firstName} ${lastName}`.trim(),
-        email: user.email,
-        role: 'Administrator',
-        status: 'Actif'
-      }]);
-
-      employee = newEmployee;
-    }
-
+    // 3. If employee exists and is attached to a factory
     if (employee?.organization_id) {
       localStorage.setItem('active_org_id', employee.organization_id);
+      set({
+        user,
+        employee: employee as Employee,
+        isLoading: false
+      });
+      return;
     }
 
+    // 4. New user without factory profile: user is authenticated, employee is null so Step 2 form renders
     set({
       user,
-      employee: employee as Employee,
+      employee: null,
       isLoading: false
     });
   } catch (err) {

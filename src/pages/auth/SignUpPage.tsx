@@ -45,10 +45,43 @@ export function SignUpPage() {
     website: '',
     employee_count: 15,
     machine_count: 3,
-    production_type: 'Bobinage & Découpe',
     timezone: 'Africa/Tunis',
     default_language: 'fr'
   });
+
+  const { user } = useAuthStore();
+
+  useEffect(() => {
+    const checkOAuthUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const currentUser = session?.user || user;
+
+      if (currentUser || searchParams.get('google') === '1' || searchParams.get('step') === '2') {
+        const metadata = currentUser?.user_metadata || {};
+        const fullName = metadata.full_name || metadata.name || currentUser?.email?.split('@')[0] || '';
+        const firstName = metadata.given_name || fullName.split(' ')[0] || '';
+        const lastName = metadata.family_name || fullName.split(' ').slice(1).join(' ') || '';
+
+        setAccountForm(prev => ({
+          ...prev,
+          first_name: prev.first_name || firstName,
+          last_name: prev.last_name || lastName,
+          email: prev.email || currentUser?.email || '',
+          phone: prev.phone || metadata.phone || ''
+        }));
+
+        setFactoryForm(prev => ({
+          ...prev,
+          email: prev.email || currentUser?.email || '',
+          phone: prev.phone || metadata.phone || ''
+        }));
+
+        setStep(2);
+      }
+    };
+
+    checkOAuthUser();
+  }, [user, searchParams]);
 
   useEffect(() => {
     fetchPlans();
@@ -119,7 +152,7 @@ export function SignUpPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/onboarding`
+          redirectTo: `${window.location.origin}/signup?step=2&google=1`
         }
       });
       if (error) throw error;
@@ -142,27 +175,33 @@ export function SignUpPage() {
       const orgId = crypto.randomUUID();
       const orgSlug = factoryForm.company_name.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Math.floor(Math.random() * 1000);
 
-      // 1. Strictly register user in Supabase auth.users
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: accountForm.email,
-        password: accountForm.password,
-        options: {
-          data: {
-            first_name: accountForm.first_name,
-            last_name: accountForm.last_name,
-            phone: accountForm.phone,
-            organization_id: orgId
-          }
-        }
-      });
+      // Check if session exists (e.g. from Google OAuth)
+      const { data: { session } } = await supabase.auth.getSession();
+      let authUserId = session?.user?.id;
+      let userEmail = session?.user?.email || accountForm.email;
 
-      if (authError) {
-        throw new Error(authError.message || "Erreur lors de la création de l'utilisateur dans Supabase Auth.");
+      if (!authUserId) {
+        // Strictly register in Supabase auth.users for email/password
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: accountForm.email,
+          password: accountForm.password,
+          options: {
+            data: {
+              first_name: accountForm.first_name,
+              last_name: accountForm.last_name,
+              phone: accountForm.phone,
+              organization_id: orgId
+            }
+          }
+        });
+
+        if (authError) {
+          throw new Error(authError.message || "Erreur lors de l'enregistrement dans Supabase Auth.");
+        }
+        authUserId = authData?.user?.id || crypto.randomUUID();
       }
 
-      const authUserId = authData?.user?.id || crypto.randomUUID();
-
-      // 2. Create organization in public.organizations
+      // 1. Create organization in public.organizations
       await (supabase as any)
         .from('organizations')
         .insert([
@@ -179,44 +218,45 @@ export function SignUpPage() {
             postal_code: factoryForm.postal_code,
             country: 'Tunisia',
             phone: factoryForm.phone || accountForm.phone,
-            email: factoryForm.email || accountForm.email,
+            email: factoryForm.email || userEmail,
             website: factoryForm.website,
             employee_count: factoryForm.employee_count,
             machine_count: factoryForm.machine_count,
             production_type: factoryForm.production_type,
             timezone: factoryForm.timezone,
             default_language: factoryForm.default_language,
-            onboarding_completed: false,
-            onboarding_step: 1
+            onboarding_completed: true,
+            onboarding_step: 5
           }
         ]);
 
-      // 3. Create employee profile in public.employees (linked to auth.users.id)
+      // 2. Create employee profile in public.employees (linked to auth.users.id)
       await (supabase as any).from('employees').insert([
         {
           id: crypto.randomUUID(),
           user_id: authUserId,
           organization_id: orgId,
-          first_name: accountForm.first_name,
-          last_name: accountForm.last_name,
-          email: accountForm.email,
+          first_name: accountForm.first_name || 'Admin',
+          last_name: accountForm.last_name || '',
+          email: userEmail,
           role: 'Administrator',
           is_active: true
         }
       ]);
 
-      // 4. Create user profile in public.users (backward compatibility, no passwords stored in public)
+      // 3. Create user profile in public.users
       await (supabase as any).from('users').insert([
         {
           id: authUserId,
           organization_id: orgId,
-          name: `${accountForm.first_name} ${accountForm.last_name}`,
-          email: accountForm.email,
+          name: `${accountForm.first_name} ${accountForm.last_name}`.trim() || 'Admin',
+          email: userEmail,
           role: 'Administrator',
           status: 'Actif'
         }
       ]);
 
+      // 4. Create subscription
       const planDb = plans.find(p => p.slug === selectedPlanSlug);
       const planId = planDb?.id || '2';
 
@@ -235,13 +275,14 @@ export function SignUpPage() {
       localStorage.setItem('active_org_id', orgId);
       setTestUser({
         id: authUserId,
-        first_name: accountForm.first_name,
-        last_name: accountForm.last_name,
-        role: 'Administrator'
+        first_name: accountForm.first_name || 'Admin',
+        last_name: accountForm.last_name || '',
+        role: 'Administrator',
+        organization_id: orgId
       });
 
-      toast.success('Compte usine créé avec succès ! Bienvenue sur FactoryFlow TN.');
-      navigate('/onboarding');
+      toast.success('Votre Espace Usine a été activé avec succès ! Bienvenue.');
+      navigate('/admin');
 
     } catch (err: any) {
       console.error('Signup failed', err);
