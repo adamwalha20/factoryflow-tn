@@ -27,32 +27,27 @@ export const useAuthStore = create<AuthState>((set) => ({
   isLoading: true,
   initialize: async () => {
     try {
-      // Check for persisted demo user first
-      const demoUser = localStorage.getItem('demo_user');
-      if (demoUser) {
-        const employee = JSON.parse(demoUser) as Employee;
-        set({ 
-          user: { id: employee.id } as User, 
-          employee, 
-          isLoading: false 
-        });
-        return;
-      }
-
       const { data: { session } } = await supabase.auth.getSession();
+      
       if (session?.user) {
+        localStorage.removeItem('demo_user');
         await resolveUserProfile(session.user, set);
       } else {
+        localStorage.removeItem('demo_user');
         set({ user: null, employee: null, isLoading: false });
       }
 
-      supabase.auth.onAuthStateChange(async (_event, session) => {
-        if (localStorage.getItem('demo_user')) return;
+      supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'SIGNED_OUT' || !session?.user) {
+          localStorage.removeItem('demo_user');
+          localStorage.removeItem('active_org_id');
+          set({ user: null, employee: null, isLoading: false });
+          return;
+        }
 
         if (session?.user) {
+          localStorage.removeItem('demo_user');
           await resolveUserProfile(session.user, set);
-        } else {
-          set({ user: null, employee: null, isLoading: false });
         }
       });
     } catch (error) {
@@ -62,14 +57,20 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
   signOut: async () => {
     localStorage.removeItem('demo_user');
-    await supabase.auth.signOut();
-    set({ user: null, employee: null });
+    localStorage.removeItem('active_org_id');
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.warn('Signout note', e);
+    }
+    set({ user: null, employee: null, isLoading: false });
   },
   setTestUser: (employee: Employee) => {
-    // For demo/development without actual supabase auth backend populated
-    localStorage.setItem('demo_user', JSON.stringify(employee));
+    if (employee.organization_id) {
+      localStorage.setItem('active_org_id', employee.organization_id);
+    }
     set({ 
-      user: { id: employee.id } as User,
+      user: { id: employee.id, email: employee.email } as User,
       employee,
       isLoading: false 
     });
@@ -78,11 +79,13 @@ export const useAuthStore = create<AuthState>((set) => ({
 
 async function resolveUserProfile(user: User, set: any) {
   try {
-    // 1. Check in employees table by user_id or email
+    // 1. Strictly look up employee profile matching this exact authenticated user ID or Email
     let { data: employee } = await (supabase as any)
       .from('employees')
       .select('*')
       .or(`user_id.eq.${user.id},email.eq.${user.email}`)
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     // 2. If not found in employees, check in users table
@@ -91,9 +94,11 @@ async function resolveUserProfile(user: User, set: any) {
         .from('users')
         .select('*')
         .or(`id.eq.${user.id},email.eq.${user.email}`)
+        .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
 
-      if (userRow) {
+      if (userRow && userRow.organization_id) {
         employee = {
           id: userRow.id,
           first_name: userRow.name?.split(' ')[0] || 'Admin',
@@ -105,7 +110,7 @@ async function resolveUserProfile(user: User, set: any) {
       }
     }
 
-    // 3. If employee exists and is attached to a factory
+    // 3. If employee exists and is attached to a factory -> Activate their factory context
     if (employee?.organization_id) {
       localStorage.setItem('active_org_id', employee.organization_id);
       set({
@@ -116,7 +121,8 @@ async function resolveUserProfile(user: User, set: any) {
       return;
     }
 
-    // 4. New user without factory profile: user is authenticated, employee is null so Step 2 form renders
+    // 4. NEW user without an existing factory profile in DB -> Clear any old cached org
+    localStorage.removeItem('active_org_id');
     set({
       user,
       employee: null,

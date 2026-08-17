@@ -115,17 +115,7 @@ export const useTenantStore = create<TenantState>((set, get) => ({
       localStorage.setItem('active_org_id', orgId);
 
       set({
-        currentOrg: orgData || {
-          id: DEFAULT_ORG_ID,
-          name: 'Adpro Packaging & Tapes',
-          slug: 'adpro',
-          country: 'Tunisia',
-          timezone: 'Africa/Tunis',
-          default_language: 'fr',
-          onboarding_completed: true,
-          onboarding_step: 5,
-          created_at: new Date().toISOString()
-        },
+        currentOrg: orgData || null,
         currentSubscription: subData || null,
         factories: factoriesData || [],
         usage: {
