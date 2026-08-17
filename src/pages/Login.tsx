@@ -84,6 +84,20 @@ export function Login() {
     try {
       const cleanEmail = email.trim().toLowerCase();
 
+      // Check for Developer Space login
+      if (cleanEmail === 'dev@factoryflow.tn' || cleanEmail === 'developer@factoryflow.tn' || cleanEmail === 'admin@factoryflow.tn' || cleanEmail === 'dev') {
+        if (password === 'developer123' || password === 'admin123' || password === 'admin' || password === 'dev') {
+          setTestUser({
+            id: 'developer-superadmin-root',
+            first_name: 'Super',
+            last_name: 'Developer',
+            role: 'Developer'
+          });
+          navigate('/developer');
+          return;
+        }
+      }
+
       // Check for terminal quick logins
       if (cleanEmail.includes('tablette.') || cleanEmail.includes('scanner.') || cleanEmail.includes('mecanique.')) {
         const orgParam = searchParams.get('org') || localStorage.getItem('active_org_id');
@@ -135,6 +149,8 @@ export function Login() {
           navigate('/scanner');
         } else if (employee.role === 'Mechanic') {
           navigate('/mechanic');
+        } else if (employee.role === 'Developer' || employee.role === 'SuperAdmin') {
+          navigate('/developer');
         } else {
           navigate('/admin');
         }
@@ -329,20 +345,45 @@ export function Login() {
           </form>
 
           {/* Quick Demo Credentials Box */}
-          <div className={`pt-4 border-t text-[11px] space-y-1.5 ${
+          <div className={`pt-4 border-t text-[11px] space-y-2.5 ${
             theme === 'dark' ? 'border-slate-800 text-slate-400' : 'border-slate-100 text-slate-500'
           }`}>
-            <p className={`font-bold ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>💡 Comptes d'Accès Usine :</p>
+            <div className="flex items-center justify-between">
+              <p className={`font-bold ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>💡 Accès Rapides :</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setTestUser({
+                    id: 'developer-root-superadmin',
+                    first_name: 'Super',
+                    last_name: 'Developer',
+                    role: 'Developer'
+                  });
+                  navigate('/developer');
+                }}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-800/80 text-cyan-300 rounded-lg font-bold text-[10px] transition-all shadow-xs"
+              >
+                <span className="material-symbols-outlined text-[14px]">terminal</span>
+                <span>Espace Développeur ⚡</span>
+              </button>
+            </div>
+
             <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
-              <div className={`p-2 rounded-lg border ${
-                theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
-              }`}>
-                <span className="text-blue-500 font-bold block">Superviseur :</span>
+              <div 
+                onClick={() => { setEmail('dev@factoryflow.tn'); setPassword('developer123'); }}
+                className={`p-2 rounded-lg border cursor-pointer hover:border-blue-500 transition-colors ${
+                  theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+                }`}
+              >
+                <span className="text-blue-500 font-bold block">Développeur :</span>
                 dev@factoryflow.tn
               </div>
-              <div className={`p-2 rounded-lg border ${
-                theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
-              }`}>
+              <div 
+                onClick={() => { setEmail('tablette@usine.tn'); setPassword('1234'); }}
+                className={`p-2 rounded-lg border cursor-pointer hover:border-emerald-500 transition-colors ${
+                  theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+                }`}
+              >
                 <span className="text-emerald-500 font-bold block">Tablette Atelier :</span>
                 tablette@usine.tn
               </div>

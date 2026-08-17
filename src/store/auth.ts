@@ -8,7 +8,7 @@ export interface Employee {
   last_name: string;
   email?: string;
   organization_id?: string;
-  role: 'Administrator' | 'Production Manager' | 'Machine Operator' | 'Quality Controller' | 'Warehouse Operator' | 'Mechanic';
+  role: 'Administrator' | 'Production Manager' | 'Machine Operator' | 'Quality Controller' | 'Warehouse Operator' | 'Mechanic' | 'Developer' | 'SuperAdmin';
   pin_code?: string;
 }
 
