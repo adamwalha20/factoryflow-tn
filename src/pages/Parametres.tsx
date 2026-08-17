@@ -1,21 +1,92 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { useNavigate } from 'react-router-dom';
 import { useLanguageStore } from '../store/language';
 import { useMesStore } from '../store/mesStore';
 import { useProductionStore } from '../store/production';
+import { useWarehouseStore, WarehouseLocation } from '../store/warehouseStore';
 import { generateSage100Export, generateOdooJsonExport, downloadFile } from '../utils/erpExport';
 
 export const Parametres = () => {
-  const [activeTab, setActiveTab] = useState<'entreprise' | 'erp' | 'subscription' | 'langue'>('entreprise');
-  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<'warehouses' | 'erp' | 'subscription' | 'langue'>('warehouses');
   const { language, setLanguage } = useLanguageStore();
   const { orders, production_entries } = useMesStore();
   const { machines } = useProductionStore();
+  const { locations, fetchLocations, addLocation, deleteLocation, updateLocation, loading: loadingWarehouses } = useWarehouseStore();
+
+  // Warehouse Modal state
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [editingLocId, setEditingLocId] = useState<string | null>(null);
+  const [locName, setLocName] = useState('');
+  const [locCode, setLocCode] = useState('');
+  const [locZone, setLocZone] = useState('');
+  const [savingLoc, setSavingLoc] = useState(false);
 
   // ERP Export state
   const [exportFormat, setExportFormat] = useState<'sage' | 'odoo'>('sage');
   const [exporting, setExporting] = useState(false);
+
+  useEffect(() => {
+    fetchLocations();
+  }, [fetchLocations]);
+
+  const handleOpenAddModal = () => {
+    setEditingLocId(null);
+    setLocName('');
+    setLocCode('');
+    setLocZone('');
+    setShowLocationModal(true);
+  };
+
+  const handleOpenEditModal = (loc: WarehouseLocation) => {
+    setEditingLocId(loc.id);
+    setLocName(loc.name);
+    setLocCode(loc.code);
+    setLocZone(loc.zone || '');
+    setShowLocationModal(true);
+  };
+
+  const handleSaveLocation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!locName.trim()) {
+      return toast.error('Veuillez saisir le nom de l\'emplacement');
+    }
+
+    setSavingLoc(true);
+    try {
+      if (editingLocId) {
+        await updateLocation(editingLocId, {
+          name: locName.trim(),
+          code: locCode.trim() || locName.substring(0, 4).toUpperCase(),
+          zone: locZone.trim() || 'Zone Générale'
+        });
+        toast.success('Emplacement modifié avec succès !');
+      } else {
+        await addLocation({
+          name: locName.trim(),
+          code: locCode.trim() || locName.substring(0, 4).toUpperCase(),
+          zone: locZone.trim() || 'Zone Générale',
+          is_active: true
+        });
+        toast.success('Nouvel emplacement ajouté avec succès !');
+      }
+      setShowLocationModal(false);
+    } catch (err: any) {
+      toast.error('Erreur lors de la sauvegarde : ' + (err?.message || 'Inconnue'));
+    } finally {
+      setSavingLoc(false);
+    }
+  };
+
+  const handleDeleteLocation = async (id: string, name: string) => {
+    if (confirm(`Êtes-vous sûr de vouloir supprimer l'emplacement "${name}" ?`)) {
+      try {
+        await deleteLocation(id);
+        toast.success('Emplacement supprimé');
+      } catch (err: any) {
+        toast.error('Erreur lors de la suppression');
+      }
+    }
+  };
 
   const handleExportErp = () => {
     setExporting(true);
@@ -55,14 +126,14 @@ export const Parametres = () => {
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Paramètres Système & SaaS</h1>
-          <p className="text-sm text-slate-500 font-medium mt-1">Configuration générale, connecteurs ERP et gestion de l'abonnement</p>
+          <p className="text-sm text-slate-500 font-medium mt-1">Configuration des entrepôts, connecteurs ERP et gestion de l'abonnement</p>
         </div>
 
         <a 
           href="/portal" 
           target="_blank" 
           rel="noreferrer"
-          className="px-4 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors border border-blue-200 self-start sm:self-auto"
+          className="px-4 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors border border-blue-200 self-start sm:self-auto shadow-xs"
         >
           <span className="material-symbols-outlined text-[16px]">visibility</span>
           Portail Client Public ➔
@@ -76,11 +147,11 @@ export const Parametres = () => {
             <ul className="flex flex-col text-sm font-medium space-y-1">
               <li>
                 <button 
-                  onClick={() => setActiveTab('entreprise')} 
-                  className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-colors ${activeTab === 'entreprise' ? 'bg-blue-50 text-blue-700 font-bold shadow-2xs' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                  onClick={() => setActiveTab('warehouses')} 
+                  className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-colors ${activeTab === 'warehouses' ? 'bg-blue-50 text-blue-700 font-bold shadow-2xs' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
                 >
-                  <span className="material-symbols-outlined text-[20px]">domain</span>
-                  Profil Entreprise
+                  <span className="material-symbols-outlined text-[20px]">warehouse</span>
+                  Emplacements & Entrepôts
                 </button>
               </li>
               <li>
@@ -117,59 +188,101 @@ export const Parametres = () => {
         {/* Main Settings Panel */}
         <div className="lg:col-span-2">
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
-            {/* TAB 1: ENTREPRISE */}
-            {activeTab === 'entreprise' && (
-              <>
-                <h3 className="text-lg font-bold text-slate-900 border-b border-slate-200 pb-4 mb-6">Informations de l'Entreprise</h3>
-                
-                <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); toast.success('Paramètres entreprise sauvegardés !'); }}>
-                  <div className="flex items-center gap-6">
-                    <div className="w-20 h-20 rounded-2xl border border-slate-200 bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-2xl font-black shadow-md">
-                      FF
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-semibold text-slate-900 mb-1">Logo et Identité Usine</h4>
-                      <p className="text-xs text-slate-500 mb-3">Affiché sur les étiquettes cartons et les bons de livraison.</p>
-                      <button onClick={(e) => { e.preventDefault(); toast.success('Logo mis à jour'); }} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg border border-slate-300 transition-colors" type="button">
-                        Changer le logo
-                      </button>
-                    </div>
+            
+            {/* TAB 1: WAREHOUSES & LOCATIONS */}
+            {activeTab === 'warehouses' && (
+              <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-slate-200 pb-4">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900">Emplacements & Entrepôts Usine</h3>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Définissez les zones de stockage physique pour votre entreprise. Ces emplacements apparaissent automatiquement dans le scanner QR mobile.
+                    </p>
                   </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Raison Sociale</label>
-                      <input className="input-base text-sm" defaultValue="Adpro Packaging & Tapes" type="text" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Matricule Fiscal / SIRET</label>
-                      <input className="input-base text-sm" defaultValue="1458923/A/M/000" type="text" />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Adresse de l'Usine</label>
-                      <input className="input-base text-sm" defaultValue="Zone Industrielle Charguia II, 2035 Tunis, Tunisie" type="text" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Devise Principale</label>
-                      <select className="input-base text-sm" defaultValue="TND">
-                        <option value="TND">Dinar Tunisien (TND)</option>
-                        <option value="EUR">Euro (€)</option>
-                        <option value="USD">Dollar ($)</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Site / Usine Active</label>
-                      <input className="input-base text-sm" defaultValue="Usine Principale Tunis" type="text" disabled />
-                    </div>
-                  </div>
-                  
-                  <div className="pt-4 border-t border-slate-200 flex justify-end gap-3">
-                    <button type="submit" className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-sm transition-colors">
-                      Enregistrer
+                  <button 
+                    onClick={handleOpenAddModal}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-sm transition-colors self-start sm:self-auto shrink-0"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">add_location_alt</span>
+                    Nouvel Emplacement
+                  </button>
+                </div>
+
+                {loadingWarehouses ? (
+                  <div className="text-center py-10 text-slate-500 text-sm">Chargement des emplacements...</div>
+                ) : locations.length === 0 ? (
+                  <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
+                    <span className="material-symbols-outlined text-4xl text-slate-400 mb-2">warehouse</span>
+                    <p className="text-sm font-semibold text-slate-700">Aucun emplacement configuré</p>
+                    <p className="text-xs text-slate-500 mt-1 mb-4">Créez votre premier emplacement de stockage ou quai d'expédition.</p>
+                    <button 
+                      onClick={handleOpenAddModal}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs inline-flex items-center gap-1.5"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">add</span>
+                      Ajouter un Emplacement
                     </button>
                   </div>
-                </form>
-              </>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-sm">
+                      <thead>
+                        <tr className="bg-slate-50 text-slate-500 text-xs font-semibold uppercase tracking-wider border-b border-slate-200">
+                          <th className="p-3">Code</th>
+                          <th className="p-3">Nom de l'Emplacement</th>
+                          <th className="p-3">Zone / Allée</th>
+                          <th className="p-3">Statut</th>
+                          <th className="p-3 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {locations.map(loc => (
+                          <tr key={loc.id} className="hover:bg-slate-50/80 transition-colors">
+                            <td className="p-3">
+                              <span className="font-mono text-xs font-bold px-2 py-1 bg-slate-100 text-slate-700 rounded-md border border-slate-200">
+                                {loc.code}
+                              </span>
+                            </td>
+                            <td className="p-3 font-semibold text-slate-900">
+                              {loc.name}
+                            </td>
+                            <td className="p-3 text-slate-600 text-xs font-medium">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                                {loc.zone || 'Zone Standard'}
+                              </span>
+                            </td>
+                            <td className="p-3">
+                              <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                Actif
+                              </span>
+                            </td>
+                            <td className="p-3 text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <button 
+                                  onClick={() => handleOpenEditModal(loc)}
+                                  className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                  title="Modifier"
+                                >
+                                  <span className="material-symbols-outlined text-[18px]">edit</span>
+                                </button>
+                                <button 
+                                  onClick={() => handleDeleteLocation(loc.id, loc.name)}
+                                  className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                  title="Supprimer"
+                                >
+                                  <span className="material-symbols-outlined text-[18px]">delete</span>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             )}
 
             {/* TAB 2: ERP CONNECTORS */}
@@ -353,6 +466,90 @@ export const Parametres = () => {
           </div>
         </div>
       </div>
+
+      {/* MODAL: ADD / EDIT WAREHOUSE LOCATION */}
+      {showLocationModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in duration-200">
+            <div className="flex justify-between items-center mb-5 pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-blue-600 text-2xl">warehouse</span>
+                <h3 className="font-bold text-slate-900 text-lg">
+                  {editingLocId ? 'Modifier l\'Emplacement' : 'Nouvel Emplacement de Stockage'}
+                </h3>
+              </div>
+              <button 
+                onClick={() => setShowLocationModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+              >
+                <span className="material-symbols-outlined text-xl">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveLocation} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Nom de l'Emplacement *
+                </label>
+                <input 
+                  type="text" 
+                  value={locName}
+                  onChange={e => setLocName(e.target.value)}
+                  placeholder="Ex: Entrepôt Principal, Quai B, Allée 3 - Rack 04"
+                  className="input-base text-sm font-medium"
+                  required
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Code Emplacement (Court / Référence)
+                </label>
+                <input 
+                  type="text" 
+                  value={locCode}
+                  onChange={e => setLocCode(e.target.value.toUpperCase())}
+                  placeholder="Ex: WH-MAIN, EXP-01, RACK-A4"
+                  className="input-base text-sm font-mono uppercase"
+                />
+                <p className="text-[11px] text-slate-400 mt-1">Si laissé vide, sera auto-généré à partir du nom.</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Zone / Bâtiment / Quai
+                </label>
+                <input 
+                  type="text" 
+                  value={locZone}
+                  onChange={e => setLocZone(e.target.value)}
+                  placeholder="Ex: Magasin Central, Bâtiment 2, Quai Logistique"
+                  className="input-base text-sm"
+                />
+              </div>
+
+              <div className="pt-4 border-t border-slate-100 flex justify-end gap-2">
+                <button 
+                  type="button" 
+                  onClick={() => setShowLocationModal(false)}
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl text-xs font-bold transition-colors"
+                >
+                  Annuler
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={savingLoc}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  {savingLoc ? <span className="material-symbols-outlined text-sm animate-spin">refresh</span> : null}
+                  {editingLocId ? 'Enregistrer' : 'Créer l\'Emplacement'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -4,11 +4,13 @@ import toast from 'react-hot-toast';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import { useMesStore } from '../store/mesStore';
 import { useTenantStore } from '../store/tenantStore';
+import { useWarehouseStore } from '../store/warehouseStore';
 
 export function ScanQR() {
   const [searchParams] = useSearchParams();
   const { fetchCartonByNumber, verifyCarton, stockCarton, verifyLot, stockLot, orders, articles, fetchInitialData, cartons, markLotInReview } = useMesStore();
   const { fetchTenantData } = useTenantStore();
+  const { locations, fetchLocations } = useWarehouseStore();
   const [scanResult, setScanResult] = useState<any>(null);
   const [isScanning, setIsScanning] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
@@ -28,7 +30,14 @@ export function ScanQR() {
       fetchTenantData(orgParam);
     }
     fetchInitialData();
-  }, [searchParams, fetchTenantData, fetchInitialData]);
+    fetchLocations();
+  }, [searchParams, fetchTenantData, fetchInitialData, fetchLocations]);
+
+  useEffect(() => {
+    if (locations && locations.length > 0 && (!warehouseLocation || warehouseLocation === 'Entrepôt Principal')) {
+      setWarehouseLocation(locations[0].name);
+    }
+  }, [locations]);
 
   const handleScan = async (result: any) => {
     if (result && result.length > 0 && isScanning && !isLoading) {
@@ -368,20 +377,32 @@ export function ScanQR() {
              </div>
              
              <div className="bg-white p-5 rounded-xl border border-zinc-200 shadow-sm flex-1">
-               <label className="block text-sm font-semibold text-zinc-700 mb-2">Choisir l'Entrepôt de destination :</label>
-               <select 
-                 value={warehouseLocation} 
-                 onChange={e => setWarehouseLocation(e.target.value)}
-                 className="w-full border border-zinc-300 rounded-lg px-4 py-3 text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-               >
-                 <option value="Entrepôt Principal">Entrepôt Principal</option>
-                 <option value="Zone d'Expédition">Zone d'Expédition</option>
-                 <option value="Quai de Chargement">Quai de Chargement</option>
-                 <option value="Zone de Quarantaine">Zone de Quarantaine</option>
-               </select>
-               
-               <p className="text-xs text-zinc-500 mt-4">Ce carton sera enregistré dans l'historique et transféré virtuellement vers cet emplacement.</p>
-             </div>
+                <label className="block text-sm font-semibold text-zinc-700 mb-2">Choisir l'Emplacement / Entrepôt :</label>
+                <select 
+                  value={warehouseLocation} 
+                  onChange={e => setWarehouseLocation(e.target.value)}
+                  className="w-full border border-zinc-300 rounded-lg px-4 py-3 text-base font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                >
+                  {locations && locations.length > 0 ? (
+                    locations.map(loc => (
+                      <option key={loc.id} value={loc.name}>
+                        {loc.name} {loc.code ? `(${loc.code})` : ''} {loc.zone ? `— ${loc.zone}` : ''}
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="Entrepôt Principal">Entrepôt Principal (WH-MAIN)</option>
+                      <option value="Zone d'Expédition">Zone d'Expédition (EXP-01)</option>
+                      <option value="Magasin Produits Finis">Magasin Produits Finis (PF-MAG)</option>
+                      <option value="Quai de Chargement">Quai de Chargement (QUAI-B)</option>
+                    </>
+                  )}
+                </select>
+                
+                <p className="text-xs text-zinc-500 mt-4">
+                  Ce carton / lot sera enregistré dans l'historique et transféré virtuellement vers cet emplacement personnalisé.
+                </p>
+              </div>
 
              <button 
                onClick={handleSubmit}
