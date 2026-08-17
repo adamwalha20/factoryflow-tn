@@ -49,16 +49,6 @@ export function Header() {
       </div>
       
       <div className="flex items-center gap-3">
-        {/* Developer Space Quick Switcher */}
-        <a
-          href="/developer"
-          className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-cyan-400 border border-cyan-800/80 rounded-lg text-xs font-black transition-all shadow-xs"
-          title="Console Développeur & SuperAdmin"
-        >
-          <span className="material-symbols-outlined text-[14px]">terminal</span>
-          <span>Dev Space ⚡</span>
-        </a>
-
         {/* Language Selector */}
         <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs font-semibold">
           <button

@@ -37,13 +37,21 @@ export function DeveloperDashboard() {
   const { employee, setTestUser } = useAuthStore();
   const { switchOrganization } = useTenantStore();
 
+  // Standalone Developer Gate State (Independent from normal app auth)
+  const [isUnlocked, setIsUnlocked] = useState<boolean>(() => {
+    return sessionStorage.getItem('dev_master_auth') === 'true' || employee?.role === 'Developer';
+  });
+  const [devEmailInput, setDevEmailInput] = useState('');
+  const [devPasswordInput, setDevPasswordInput] = useState('');
+  const [authError, setAuthError] = useState('');
+
   const [activeTab, setActiveTab] = useState<'factories' | 'analytics' | 'database' | 'logs'>('factories');
   const [factories, setFactories] = useState<FactoryStats[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPlanFilter, setSelectedPlanFilter] = useState('ALL');
 
-  // Selected Factory for Detailed View Modal
+  // Selected Factory for Detailed View Drawer/Modal
   const [detailedFactory, setDetailedFactory] = useState<FactoryStats | null>(null);
 
   // Purge / Delete Modal State
@@ -58,19 +66,51 @@ export function DeveloperDashboard() {
 
   // Global Table Counts for Database Tab
   const [tableCounts, setTableCounts] = useState<{ [table: string]: number }>({});
-  const [isRefreshingDB, setIsRefreshingDB] = useState(false);
 
   // System Logs
   const [systemLogs, setSystemLogs] = useState<any[]>([]);
 
   useEffect(() => {
-    fetchDeveloperData();
-  }, []);
+    if (isUnlocked) {
+      fetchDeveloperData();
+    }
+  }, [isUnlocked]);
+
+  // Handle Standalone Master Developer Login
+  const handleMasterLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+    const cleanEmail = devEmailInput.trim().toLowerCase();
+
+    const isValidDev = 
+      (cleanEmail === 'dev@factoryflow.tn' || cleanEmail === 'developer@factoryflow.tn' || cleanEmail === 'admin@factoryflow.tn' || cleanEmail === 'adam@factoryflow.tn' || cleanEmail === 'dev') &&
+      (devPasswordInput === 'developer123' || devPasswordInput === 'admin123' || devPasswordInput === 'dev' || devPasswordInput === 'admin');
+
+    if (isValidDev) {
+      sessionStorage.setItem('dev_master_auth', 'true');
+      setIsUnlocked(true);
+      setTestUser({
+        id: 'developer-master-root',
+        first_name: 'Super',
+        last_name: 'Developer',
+        role: 'Developer'
+      });
+      toast.success('Console Développeur déverrouillée avec succès !');
+    } else {
+      setAuthError('Identifiants développeur non reconnus.');
+    }
+  };
+
+  const handleLockConsole = () => {
+    sessionStorage.removeItem('dev_master_auth');
+    setIsUnlocked(false);
+    setDevPasswordInput('');
+    toast('Console développeur verrouillée.', { icon: '🔒' });
+  };
 
   const fetchDeveloperData = async () => {
     setIsLoading(true);
     try {
-      // 1. Fetch Organizations and Subscriptions
       const [
         { data: orgs, error: orgsErr },
         { data: subs },
@@ -103,7 +143,6 @@ export function DeveloperDashboard() {
 
       const subMap = new Map((subs || []).map((s: any) => [s.organization_id, s]));
 
-      // Aggregate counts per organization
       const aggregated: FactoryStats[] = (orgs || []).map((org: any) => {
         const sub: any = subMap.get(org.id);
         const orgMachines = (machines || []).filter((m: any) => m.organization_id === org.id);
@@ -147,7 +186,6 @@ export function DeveloperDashboard() {
       setFactories(aggregated);
       setSystemLogs(auditLogs || []);
 
-      // Set table counts for database inspector
       setTableCounts({
         organizations: (orgs || []).length,
         users: (users || []).length,
@@ -164,7 +202,7 @@ export function DeveloperDashboard() {
 
     } catch (err: any) {
       console.error('Error fetching developer data:', err);
-      toast.error('Erreur chargement console développeur: ' + err.message);
+      toast.error('Erreur chargement: ' + err.message);
     } finally {
       setIsLoading(false);
     }
@@ -186,7 +224,6 @@ export function DeveloperDashboard() {
       const targetPlan = (plans || []).find((p: any) => p.slug === newPlanSlug);
 
       if (targetPlan) {
-        // Upsert subscription
         await (supabase as any).from('subscriptions').upsert({
           organization_id: editPlanFactory.id,
           plan_id: targetPlan.id,
@@ -217,7 +254,6 @@ export function DeveloperDashboard() {
 
     try {
       if (purgeTarget.type === 'DELETE_FACTORY') {
-        // Cascade delete whole factory
         await (supabase as any).from('cartons').delete().eq('organization_id', orgId);
         await (supabase as any).from('production_entries').delete().eq('organization_id', orgId);
         await (supabase as any).from('manufacturing_orders').delete().eq('organization_id', orgId);
@@ -230,22 +266,21 @@ export function DeveloperDashboard() {
         await (supabase as any).from('subscriptions').delete().eq('organization_id', orgId);
         await (supabase as any).from('organizations').delete().eq('id', orgId);
 
-        toast.success(`Usine ${purgeTarget.factory.name} et toutes ses données ont été supprimées définitivement.`);
+        toast.success(`Usine ${purgeTarget.factory.name} et toutes ses données supprimées.`);
       } else if (purgeTarget.type === 'WIPE_PRODUCTION') {
-        // Wipe production telemetry, OFs and cartons
         await (supabase as any).from('cartons').delete().eq('organization_id', orgId);
         await (supabase as any).from('production_entries').delete().eq('organization_id', orgId);
         await (supabase as any).from('manufacturing_orders').delete().eq('organization_id', orgId);
         await (supabase as any).from('machine_stops').delete().eq('organization_id', orgId);
         await (supabase as any).from('quality_inspections').delete().eq('organization_id', orgId);
 
-        toast.success(`Toutes les données de production de ${purgeTarget.factory.name} ont été purgées !`);
+        toast.success(`Données de production de ${purgeTarget.factory.name} purgées.`);
       } else if (purgeTarget.type === 'WIPE_CARTONS') {
         await (supabase as any).from('cartons').delete().eq('organization_id', orgId);
-        toast.success(`Tous les cartons de ${purgeTarget.factory.name} ont été supprimés !`);
+        toast.success(`Tous les cartons de ${purgeTarget.factory.name} ont été supprimés.`);
       } else if (purgeTarget.type === 'WIPE_MATERIALS') {
         await (supabase as any).from('raw_materials').delete().eq('organization_id', orgId);
-        toast.success(`Toutes les matières premières de ${purgeTarget.factory.name} ont été supprimées !`);
+        toast.success(`Toutes les matières premières de ${purgeTarget.factory.name} ont été supprimées.`);
       }
 
       setPurgeTarget(null);
@@ -258,7 +293,7 @@ export function DeveloperDashboard() {
     }
   };
 
-  // Export Database Backup JSON
+  // Export Database Snapshot
   const handleExportBackup = async () => {
     try {
       toast('Génération du snapshot JSON...', { icon: '📦' });
@@ -291,13 +326,13 @@ export function DeveloperDashboard() {
       a.download = `factoryflow_backup_${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success('Snapshot JSON téléchargé avec succès !');
+      toast.success('Snapshot JSON exporté avec succès !');
     } catch (err: any) {
       toast.error('Erreur lors du backup: ' + err.message);
     }
   };
 
-  // Global KPIs Calculation
+  // KPIs
   const totalFactories = factories.length;
   const totalMachines = factories.reduce((sum, f) => sum + f.machine_count, 0);
   const totalUsers = factories.reduce((sum, f) => sum + f.user_count + f.employee_count, 0);
@@ -322,11 +357,88 @@ export function DeveloperDashboard() {
     return matchesSearch && matchesPlan;
   });
 
+  // IF LOCKED: RENDER STANDALONE PRIVATE DEVELOPER GATE
+  if (!isUnlocked) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 font-sans text-slate-100 selection:bg-cyan-500 selection:text-slate-950">
+        
+        {/* Subtle Cyber Grid Background */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#082f4915_1px,transparent_1px),linear-gradient(to_bottom,#082f4915_1px,transparent_1px)] bg-[size:4rem_4rem] pointer-events-none" />
+
+        <div className="relative z-10 w-full max-w-md bg-slate-900/90 backdrop-blur-xl border border-cyan-500/30 rounded-3xl p-8 shadow-2xl shadow-cyan-950/50 space-y-6">
+          
+          <div className="text-center space-y-2">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-cyan-500/20 ring-1 ring-cyan-400/50">
+              <span className="material-symbols-outlined text-[30px]">terminal</span>
+            </div>
+            <h1 className="text-xl font-black tracking-tight text-white">
+              DEVELOPER CONTROL PLANE
+            </h1>
+            <p className="text-xs text-slate-400 font-mono">
+              Accès réservé uniquement au développeur de la plateforme
+            </p>
+          </div>
+
+          <form onSubmit={handleMasterLogin} className="space-y-4">
+            <div>
+              <label className="block text-xs font-mono font-bold text-cyan-400 uppercase mb-1.5">
+                Developer Identity
+              </label>
+              <input
+                type="text"
+                value={devEmailInput}
+                onChange={e => setDevEmailInput(e.target.value)}
+                placeholder="dev@factoryflow.tn"
+                required
+                className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-sm font-mono text-white focus:outline-none focus:border-cyan-500 transition-all placeholder:text-slate-600"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-mono font-bold text-cyan-400 uppercase mb-1.5">
+                Master Key Password
+              </label>
+              <input
+                type="password"
+                value={devPasswordInput}
+                onChange={e => setDevPasswordInput(e.target.value)}
+                placeholder="••••••••••••"
+                required
+                className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-sm font-mono text-white focus:outline-none focus:border-cyan-500 transition-all placeholder:text-slate-600"
+              />
+            </div>
+
+            {authError && (
+              <div className="p-3 bg-rose-950/60 border border-rose-800/80 rounded-xl text-rose-300 text-xs font-bold text-center">
+                {authError}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className="w-full py-3.5 bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white rounded-xl font-black text-sm shadow-lg shadow-cyan-600/30 transition-all flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined text-[18px]">key</span>
+              <span>Déverrouiller la Console</span>
+            </button>
+          </form>
+
+          <div className="text-center pt-2">
+            <Link to="/" className="text-xs text-slate-500 hover:text-slate-300 transition-colors font-medium">
+              ← Retour au site public
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // UNLOCKED: FULL DEVELOPER MISSION CONTROL INTERFACE
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-cyan-500 selection:text-slate-950 pb-20">
       
       {/* DEVELOPER MISSION CONTROL TOP HEADER */}
-      <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-cyan-500/20 px-6 py-3 shadow-2xl">
+      <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-cyan-500/20 px-6 py-3 shadow-2xl">
         <div className="max-w-[1600px] mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
           
           <div className="flex items-center gap-3">
@@ -343,11 +455,11 @@ export function DeveloperDashboard() {
                   LIVE CLOUD
                 </span>
               </div>
-              <p className="text-xs text-slate-400 font-medium">Console d'administration globale multi-usines & super-contrôle des données</p>
+              <p className="text-xs text-slate-400 font-medium">Console indépendante de supervision multi-usines & super-contrôle des données</p>
             </div>
           </div>
 
-          {/* Quick Actions & Navigation Bar */}
+          {/* Top Quick Actions Bar */}
           <div className="flex items-center gap-3">
             <button
               onClick={handleExportBackup}
@@ -363,23 +475,17 @@ export function DeveloperDashboard() {
               className="px-3.5 py-1.5 bg-cyan-950/60 hover:bg-cyan-900/80 text-cyan-300 border border-cyan-700/50 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
             >
               <span className="material-symbols-outlined text-[16px]">refresh</span>
-              <span>Synchroniser</span>
+              <span>Actualiser</span>
             </button>
 
-            <Link
-              to="/admin"
-              className="px-4 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-md shadow-indigo-500/20"
+            <button
+              onClick={handleLockConsole}
+              className="px-3 py-1.5 bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800/60 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+              title="Verrouiller la console"
             >
-              <span className="material-symbols-outlined text-[16px]">domain</span>
-              <span>Espace Usine Actif</span>
-            </Link>
-
-            <Link
-              to="/"
-              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium transition-colors"
-            >
-              Portail Public
-            </Link>
+              <span className="material-symbols-outlined text-[16px]">lock</span>
+              <span>Verrouiller</span>
+            </button>
           </div>
         </div>
       </header>
@@ -422,7 +528,7 @@ export function DeveloperDashboard() {
               <span className="material-symbols-outlined text-emerald-400 text-[18px]">package_2</span>
             </div>
             <p className="text-3xl font-black text-white font-mono mt-1">{totalCartons}</p>
-            <p className="text-[11px] text-emerald-400/80 font-medium mt-1">Étiquettes & QR codes générés</p>
+            <p className="text-[11px] text-emerald-400/80 font-medium mt-1">Étiquettes & QR codes</p>
           </div>
 
           <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 relative overflow-hidden group hover:border-amber-500/40 transition-all">
@@ -655,8 +761,6 @@ export function DeveloperDashboard() {
         {/* TAB 2: ANALYTICS & PERFORMANCE */}
         {activeTab === 'analytics' && (
           <div className="space-y-8">
-            
-            {/* Revenue and Adoption KPIs */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4">
                 <div className="flex items-center justify-between">
@@ -675,7 +779,7 @@ export function DeveloperDashboard() {
                 <p className="text-4xl font-black text-white font-mono">
                   {totalFactories > 0 ? Math.round((factories.filter(f => f.subscription_status === 'ACTIVE').length / totalFactories) * 100) : 0}%
                 </p>
-                <p className="text-xs text-slate-400 font-medium">Passage de l'essai gratuit au forfait mensuel</p>
+                <p className="text-xs text-slate-400 font-medium">Passage de l'essai gratuit au forfait payant</p>
               </div>
 
               <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4">
@@ -690,7 +794,7 @@ export function DeveloperDashboard() {
               </div>
             </div>
 
-            {/* Top Producing Factories Ranking */}
+            {/* Ranking of Factories */}
             <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
               <h3 className="text-base font-black text-white mb-4 flex items-center gap-2">
                 <span className="material-symbols-outlined text-amber-400">military_tech</span>
@@ -751,7 +855,6 @@ export function DeveloperDashboard() {
         {/* TAB 3: DATABASE & PURGE MASTER */}
         {activeTab === 'database' && (
           <div className="space-y-8">
-            
             <div className="bg-rose-950/40 border border-rose-800/60 rounded-3xl p-6 text-rose-200">
               <div className="flex items-start gap-4">
                 <span className="material-symbols-outlined text-3xl text-rose-400 shrink-0">warning</span>

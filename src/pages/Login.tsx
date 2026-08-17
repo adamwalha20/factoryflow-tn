@@ -344,48 +344,29 @@ export function Login() {
             </button>
           </form>
 
-          {/* Quick Demo Credentials Box */}
-          <div className={`pt-4 border-t text-[11px] space-y-2.5 ${
+          {/* Quick Access Info for Factory */}
+          <div className={`pt-4 border-t text-[11px] space-y-1.5 ${
             theme === 'dark' ? 'border-slate-800 text-slate-400' : 'border-slate-100 text-slate-500'
           }`}>
-            <div className="flex items-center justify-between">
-              <p className={`font-bold ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>💡 Accès Rapides :</p>
-              <button
-                type="button"
-                onClick={() => {
-                  setTestUser({
-                    id: 'developer-root-superadmin',
-                    first_name: 'Super',
-                    last_name: 'Developer',
-                    role: 'Developer'
-                  });
-                  navigate('/developer');
-                }}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-800/80 text-cyan-300 rounded-lg font-bold text-[10px] transition-all shadow-xs"
-              >
-                <span className="material-symbols-outlined text-[14px]">terminal</span>
-                <span>Espace Développeur ⚡</span>
-              </button>
-            </div>
-
+            <p className={`font-bold ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>💡 Terminal d'Atelier :</p>
             <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
-              <div 
-                onClick={() => { setEmail('dev@factoryflow.tn'); setPassword('developer123'); }}
-                className={`p-2 rounded-lg border cursor-pointer hover:border-blue-500 transition-colors ${
-                  theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
-                }`}
-              >
-                <span className="text-blue-500 font-bold block">Développeur :</span>
-                dev@factoryflow.tn
-              </div>
               <div 
                 onClick={() => { setEmail('tablette@usine.tn'); setPassword('1234'); }}
                 className={`p-2 rounded-lg border cursor-pointer hover:border-emerald-500 transition-colors ${
                   theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
                 }`}
               >
-                <span className="text-emerald-500 font-bold block">Tablette Atelier :</span>
+                <span className="text-emerald-500 font-bold block">Tablette Machine :</span>
                 tablette@usine.tn
+              </div>
+              <div 
+                onClick={() => { setEmail('scanner@usine.tn'); setPassword('1234'); }}
+                className={`p-2 rounded-lg border cursor-pointer hover:border-blue-500 transition-colors ${
+                  theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+                }`}
+              >
+                <span className="text-blue-500 font-bold block">Scanner Stock :</span>
+                scanner@usine.tn
               </div>
             </div>
           </div>
