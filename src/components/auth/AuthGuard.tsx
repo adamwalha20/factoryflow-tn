@@ -13,10 +13,10 @@ export function AuthGuard() {
   const location = useLocation();
 
   useEffect(() => {
-    if (user && !currentOrg) {
-      fetchTenantData();
+    if (user && employee?.organization_id) {
+      fetchTenantData(employee.organization_id);
     }
-  }, [user, currentOrg, fetchTenantData]);
+  }, [user, employee?.organization_id, fetchTenantData]);
 
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-gray-50">Chargement...</div>;

@@ -105,33 +105,36 @@ async function resolveUserProfile(user: User, set: any) {
       }
     }
 
-    // 3. If first-time OAuth login and no profile exists at all, auto-provision factory & profile
+    // 3. If new user (no existing profile in database for this email/id)
     if (!employee) {
       const metadata = user.user_metadata || {};
-      const fullName = metadata.full_name || metadata.name || user.email?.split('@')[0] || 'Utilisateur';
+      const fullName = metadata.full_name || metadata.name || user.email?.split('@')[0] || 'Nouvel Utilisateur';
       const firstName = metadata.given_name || fullName.split(' ')[0] || 'Utilisateur';
       const lastName = metadata.family_name || fullName.split(' ').slice(1).join(' ') || '';
 
-      // Check if active org exists or create a default one
-      let orgId = localStorage.getItem('active_org_id');
-      if (!orgId) {
-        const { data: existingOrg } = await (supabase as any)
-          .from('organizations')
-          .select('id')
-          .limit(1)
-          .maybeSingle();
+      // ALWAYS create a brand new isolated organization for this new user
+      const newOrgId = crypto.randomUUID();
+      const orgSlug = `factory-${Date.now().toString(36)}-${Math.floor(Math.random() * 1000)}`;
 
-        if (existingOrg) {
-          orgId = existingOrg.id;
-        } else {
-          orgId = crypto.randomUUID();
-          await (supabase as any).from('organizations').insert([{
-            id: orgId,
-            name: `${firstName}'s Factory`,
-            slug: `factory-${Math.floor(Math.random() * 10000)}`
-          }]);
-        }
-      }
+      await (supabase as any).from('organizations').insert([{
+        id: newOrgId,
+        name: `${firstName} - Usine`,
+        slug: orgSlug,
+        legal_name: `${firstName} - Usine`,
+        city: 'Tunis',
+        country: 'Tunisia',
+        onboarding_completed: false,
+        onboarding_step: 1
+      }]);
+
+      // Create subscription trial
+      await (supabase as any).from('subscriptions').insert([{
+        organization_id: newOrgId,
+        plan_id: '2',
+        status: 'TRIALING',
+        trial_start: new Date().toISOString(),
+        trial_end: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+      }]);
 
       const newEmployee = {
         id: crypto.randomUUID(),
@@ -140,10 +143,19 @@ async function resolveUserProfile(user: User, set: any) {
         last_name: lastName,
         email: user.email,
         role: 'Administrator' as const,
-        organization_id: orgId
+        organization_id: newOrgId
       };
 
       await (supabase as any).from('employees').insert([newEmployee]);
+      await (supabase as any).from('users').insert([{
+        id: newEmployee.id,
+        organization_id: newOrgId,
+        name: `${firstName} ${lastName}`.trim(),
+        email: user.email,
+        role: 'Administrator',
+        status: 'Actif'
+      }]);
+
       employee = newEmployee;
     }
 
