@@ -17,6 +17,33 @@ export function OnboardingWizard() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Step 1: Factory Details State
+  const [factoryProfile, setFactoryProfile] = useState({
+    name: '',
+    legal_name: '',
+    industry: 'Emballage & Conditionnement',
+    city: 'Tunis',
+    governorate: 'Tunis',
+    tax_id: '',
+    phone: '',
+    email: ''
+  });
+
+  useEffect(() => {
+    if (currentOrg) {
+      setFactoryProfile({
+        name: currentOrg.name || '',
+        legal_name: currentOrg.legal_name || currentOrg.name || '',
+        industry: currentOrg.industry || 'Emballage & Conditionnement',
+        city: currentOrg.city || 'Tunis',
+        governorate: currentOrg.governorate || 'Tunis',
+        tax_id: currentOrg.tax_id || '',
+        phone: currentOrg.phone || '',
+        email: currentOrg.email || ''
+      });
+    }
+  }, [currentOrg]);
+
   // Step 2: Machines State (Blank by default, user adds manually or uses suggestions)
   const [machinesList, setMachinesList] = useState<{ name: string; code: string; department: string }[]>([]);
   const [newMachine, setNewMachine] = useState({ name: '', code: '', department: 'Production' });
@@ -269,47 +296,108 @@ export function OnboardingWizard() {
               <div>
                 <span className="text-xs font-black text-blue-500 uppercase tracking-wider">Étape 1 sur 5</span>
                 <h2 className={`text-2xl font-black mt-1 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
-                  Profil & Horaires de l'Usine
+                  Profil & Informations de l'Usine
                 </h2>
                 <p className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Vérifiez les paramètres par défaut de votre site de fabrication.
+                  Renseignez les détails de votre site de fabrication pour initialiser votre espace.
                 </p>
               </div>
 
-              <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 p-6 rounded-2xl border text-sm ${
-                theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
-              }`}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <span className={`text-xs font-bold uppercase block ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
-                    Nom de l'Usine :
-                  </span>
-                  <span className={`font-black text-base ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
-                    {currentOrg?.name || 'Usine Principale'}
-                  </span>
+                  <label className={`block text-xs font-bold uppercase mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
+                    Nom Commercial de l'Usine <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Plastique Moderne Tunisie"
+                    value={factoryProfile.name}
+                    onChange={(e) => setFactoryProfile({ ...factoryProfile, name: e.target.value })}
+                    className={`w-full px-4 py-3 rounded-xl text-sm font-medium border focus:outline-none focus:border-blue-500 transition-all ${
+                      theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                    }`}
+                  />
                 </div>
+
                 <div>
-                  <span className={`text-xs font-bold uppercase block ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
-                    Localisation :
-                  </span>
-                  <span className={`font-black text-base ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
-                    {currentOrg?.city || 'Tunis'} ({currentOrg?.country || 'Tunisia'})
-                  </span>
+                  <label className={`block text-xs font-bold uppercase mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
+                    Raison Sociale Légale
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex: PMT SARL"
+                    value={factoryProfile.legal_name}
+                    onChange={(e) => setFactoryProfile({ ...factoryProfile, legal_name: e.target.value })}
+                    className={`w-full px-4 py-3 rounded-xl text-sm font-medium border focus:outline-none focus:border-blue-500 transition-all ${
+                      theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                    }`}
+                  />
                 </div>
+
                 <div>
-                  <span className={`text-xs font-bold uppercase block ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
-                    Fuseau Horaire :
-                  </span>
-                  <span className={`font-bold ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
-                    Africa/Tunis (GMT+1)
-                  </span>
+                  <label className={`block text-xs font-bold uppercase mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
+                    Secteur d'Activité
+                  </label>
+                  <select
+                    value={factoryProfile.industry}
+                    onChange={(e) => setFactoryProfile({ ...factoryProfile, industry: e.target.value })}
+                    className={`w-full px-4 py-3 rounded-xl text-sm font-medium border focus:outline-none focus:border-blue-500 transition-all ${
+                      theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                    }`}
+                  >
+                    <option value="Emballage & Conditionnement">Emballage & Conditionnement</option>
+                    <option value="Plasturgie & Injection">Plasturgie & Injection</option>
+                    <option value="Textile & Confection">Textile & Confection</option>
+                    <option value="Agroalimentaire">Agroalimentaire</option>
+                    <option value="Métallurgie & Mécanique">Métallurgie & Mécanique</option>
+                    <option value="Autre Industrie">Autre Industrie</option>
+                  </select>
                 </div>
+
                 <div>
-                  <span className={`text-xs font-bold uppercase block ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
-                    Langue par défaut :
-                  </span>
-                  <span className={`font-bold ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
-                    Français (Arabe RTL disponible)
-                  </span>
+                  <label className={`block text-xs font-bold uppercase mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
+                    Ville / Gouvernorat
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Sousse, Ben Arous, Sfax"
+                    value={factoryProfile.city}
+                    onChange={(e) => setFactoryProfile({ ...factoryProfile, city: e.target.value })}
+                    className={`w-full px-4 py-3 rounded-xl text-sm font-medium border focus:outline-none focus:border-blue-500 transition-all ${
+                      theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                    }`}
+                  />
+                </div>
+
+                <div>
+                  <label className={`block text-xs font-bold uppercase mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
+                    Matricule Fiscal (MF)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex: 1234567/A/M/000"
+                    value={factoryProfile.tax_id}
+                    onChange={(e) => setFactoryProfile({ ...factoryProfile, tax_id: e.target.value })}
+                    className={`w-full px-4 py-3 rounded-xl text-sm font-medium border focus:outline-none focus:border-blue-500 transition-all ${
+                      theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                    }`}
+                  />
+                </div>
+
+                <div>
+                  <label className={`block text-xs font-bold uppercase mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
+                    Téléphone Usine
+                  </label>
+                  <input
+                    type="tel"
+                    placeholder="+216 71 000 000"
+                    value={factoryProfile.phone}
+                    onChange={(e) => setFactoryProfile({ ...factoryProfile, phone: e.target.value })}
+                    className={`w-full px-4 py-3 rounded-xl text-sm font-medium border focus:outline-none focus:border-blue-500 transition-all ${
+                      theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                    }`}
+                  />
                 </div>
               </div>
 
@@ -324,7 +412,14 @@ export function OnboardingWizard() {
 
               <div className="flex justify-end pt-4">
                 <button
-                  onClick={() => setCurrentStep(2)}
+                  onClick={async () => {
+                    if (!factoryProfile.name) {
+                      toast.error("Veuillez indiquer le nom de votre usine.");
+                      return;
+                    }
+                    await updateCurrentOrg(factoryProfile);
+                    setCurrentStep(2);
+                  }}
                   className="px-8 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-black text-sm rounded-xl shadow-md transition-all flex items-center gap-2"
                 >
                   <span>Continuer : Ajouter des Machines</span>
