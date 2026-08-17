@@ -39,6 +39,9 @@ export function Cartons() {
   const isCartonInSession = (carton: any) => {
     if (!hasFilter) return false;
 
+    // Strictly exclude incomplete / non-full cartons in 'Waiting' status
+    if (carton.status === 'Waiting') return false;
+
     // 1. Match by session_id
     if (sessionIdParam && carton.session_id && carton.session_id === sessionIdParam) return true;
 
@@ -108,22 +111,22 @@ export function Cartons() {
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Cartons Management</h1>
           <p className="text-sm text-gray-500 font-medium mt-1">Traceability and label printing</p>
         </div>
-        {sessionStart && (
+        {hasFilter && (
           <div className="flex gap-3">
             <button 
               onClick={() => {
                 const highlightedCartons = cartons.filter(isCartonInSession);
-                if (highlightedCartons.length === 0) return toast.error("Aucun carton trouvé pour ce lot");
+                if (highlightedCartons.length === 0) return toast.error("Aucun carton produit complet trouvé pour ce lot");
                 
                 const order = orders.find(o => o.id === highlightedCartons[0].of_id);
                 const article = articles.find(a => a.id === highlightedCartons[0].article_id);
                 const totalQty = highlightedCartons.reduce((acc, c) => acc + (c.quantity || 0), 0);
                 
-                // Assuming the first carton's carton_number has the lot info like CARTON-20260720-38
-                const dateStr = new Date(sessionStart).toISOString().slice(0, 10).replace(/-/g, '');
-                const lotName = `LOT-${dateStr}-${order?.of_number}`;
+                const effectiveStart = sessionStart || highlightedCartons[0].created_at;
+                const dateStr = new Date(effectiveStart).toISOString().slice(0, 10).replace(/-/g, '');
+                const lotName = lotParam || `LOT-${dateStr}-${order?.of_number || 'LOT'}`;
                 
-                printLotLabel(lotName, totalQty, article, order, sessionStart, sessionStart, sessionEnd, sessionArticle!);
+                printLotLabel(lotName, totalQty, article, order, effectiveStart, effectiveStart, sessionEnd, (sessionArticle || article?.id)!);
                 toast.success(`Impression de l'étiquette maître pour le lot en cours...`);
               }}
               className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium shadow-sm transition-colors flex items-center gap-2"
@@ -134,7 +137,7 @@ export function Cartons() {
             <button 
               onClick={() => {
                 const highlightedCartons = cartons.filter(isCartonInSession);
-                if (highlightedCartons.length === 0) return toast.error("Aucun carton trouvé pour ce lot");
+                if (highlightedCartons.length === 0) return toast.error("Aucun carton produit complet trouvé pour ce lot");
                 
                 const itemsToPrint = highlightedCartons.map(carton => {
                   const order = orders.find(o => o.id === carton.of_id);
