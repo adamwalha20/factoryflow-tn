@@ -4,21 +4,34 @@ export const translations = {
   fr: {
     // Navigation
     dashboard: 'Tableau de Bord',
-    production: 'Production',
-    machines: 'Machines',
-    machine_stops: 'Arrêts Machines',
+    production: 'Suivi de Production',
+    machines: 'Machines & Lignes',
+    machine_stops: 'Arrêts & Pannes',
     quality_control: 'Contrôle Qualité',
-    maintenance: 'Maintenance',
+    maintenance: 'Maintenance Préventive',
     production_history: 'Historique Production',
-    reports: 'Rapports',
-    articles: 'Articles',
+    reports: 'Rapports & KPIs',
+    articles: 'Articles & Produits',
     raw_materials: 'Matières Premières',
     purchase_orders: 'Bons de Commande',
     manufacturing_orders: 'Ordres de Fabrication',
     cartons_labels: 'Cartons & Étiquettes',
+    company_profile: 'Profil Usine',
+    team_members: 'Équipe & Membres',
+    subscription_quotas: 'Forfait & Quotas',
     system_history: 'Historique Système',
-    users: 'Utilisateurs',
+    users: 'Utilisateurs & PIN',
+    saas_supervision: 'Supervision SaaS',
     settings: 'Paramètres',
+    warehouses: 'Emplacements & Entrepôts',
+
+    // Header & Global
+    factory_portal: 'Portail Usine',
+    client_portal: 'Portail Client Public',
+    search: 'Rechercher...',
+    loading: 'Chargement...',
+    logout: 'Déconnexion',
+    notifications: 'Notifications',
 
     // Common Actions
     add: 'Ajouter',
@@ -26,24 +39,29 @@ export const translations = {
     delete: 'Supprimer',
     save: 'Enregistrer',
     cancel: 'Annuler',
-    search: 'Rechercher...',
-    loading: 'Chargement...',
-    status: 'État',
+    confirm: 'Confirmer',
+    filter: 'Filtrer',
+    export: 'Exporter',
+    print: 'Imprimer',
+    status: 'Statut',
     actions: 'Actions',
     overview: "Vue d'ensemble",
     confirm_delete: 'Confirmer la suppression',
-    logout: 'Déconnexion',
+    active: 'Actif',
+    completed: 'Terminé',
+    in_progress: 'En cours',
+    stopped: 'Arrêté',
 
     // Production & Scrap
     target: 'Objectif',
     produced: 'Produit',
     good_quantity: 'Quantité Conforme',
     scrap_quantity: 'Rebut / Déchets',
-    waste_percentage: 'Taux de Déchet',
+    waste_percentage: 'Taux de Rebut',
     efficiency: 'Rendement (OEE)',
     operator: 'Opérateur',
     machine: 'Machine',
-    order: 'Ordre',
+    order: 'Ordre de Fabrication',
     date: 'Date',
 
     // Scrap Reasons
@@ -54,7 +72,7 @@ export const translations = {
     PRODUCT_DEFECT: 'Défaut Qualité Produit',
     OTHER: 'Autre motif',
 
-    // Tablet
+    // Tablet Workstation
     start_production: 'Démarrer Production',
     pause_production: 'Mettre en Pause',
     finish_production: 'Terminer OF',
@@ -62,26 +80,62 @@ export const translations = {
     record_production: 'Enregistrer Production',
     record_waste: 'Enregistrer Déchets',
     online: 'En ligne',
-    offline: 'Mode Hors-ligne (Sync en attente)'
+    offline: 'Mode Hors-ligne (Sync en attente)',
+    pieces_conforme: 'Pièces / Rouleaux Conformes',
+    rebuts_perte: 'Rebuts / Perte Matière',
+    valider_cartons: 'Valider & Générer Cartons',
+    colisage: 'Colisage Carton',
+    bobine_mere: 'Bobine Mère (Jumbo Roll)',
+    ajouter_ouvrier: 'Ajouter un ouvrier',
+    pin_code: 'Code PIN',
+
+    // Quality Control
+    conforme: 'Conforme',
+    non_conforme: 'Non Conforme',
+    defect_reason: 'Motif du rejet',
+    validated_qty: 'Quantité Validée',
+    verify_lot: 'Valider le Lot',
+    verify_carton: 'Valider le Carton',
+    put_in_stock: 'Mettre en Stock',
+
+    // Cartons & Traceability
+    carton_no: 'N° Carton',
+    lot_no: 'N° Lot',
+    print_all: 'Imprimer toutes les étiquettes',
+    print_lot: "Imprimer l'étiquette globale du Lot"
   },
+
   ar: {
     // Navigation
     dashboard: 'لوحة القيادة',
-    production: 'الإنتاج',
-    machines: 'الآلات',
+    production: 'متابعة الإنتاج',
+    machines: 'الآلات وخطوط الإنتاج',
     machine_stops: 'أعطال وتوقف الآلات',
     quality_control: 'مراقبة الجودة',
-    maintenance: 'الصيانة',
+    maintenance: 'الصيانة الوقائية',
     production_history: 'سجل الإنتاج',
-    reports: 'التقارير',
+    reports: 'التقارير والمؤشرات',
     articles: 'المنتجات والمقالات',
     raw_materials: 'المواد الأولية',
     purchase_orders: 'طلبيات الزبائن (BC)',
     manufacturing_orders: 'أوامر التصنيع (OF)',
     cartons_labels: 'الصناديق والباركود',
+    company_profile: 'ملف المصنع',
+    team_members: 'فريق العمل والأعضاء',
+    subscription_quotas: 'الاشتراك والحصص',
     system_history: 'سجل النظام والأمان',
-    users: 'المستخدمون',
-    settings: 'الإعدادات',
+    users: 'المستخدمون والرمز السري',
+    saas_supervision: 'إدارة المنصة',
+    settings: 'الإعدادات العامة',
+    warehouses: 'المخازن والمستودعات',
+
+    // Header & Global
+    factory_portal: 'بوابة المصنع',
+    client_portal: 'بوابة الزبائن',
+    search: 'بحث...',
+    loading: 'جار التحميل...',
+    logout: 'تسجيل الخروج',
+    notifications: 'الإشعارات',
 
     // Common Actions
     add: 'إضافة',
@@ -89,13 +143,18 @@ export const translations = {
     delete: 'حذف',
     save: 'حفظ',
     cancel: 'إلغاء',
-    search: 'بحث...',
-    loading: 'جار التحميل...',
+    confirm: 'تأكيد',
+    filter: 'تصفية',
+    export: 'تصدير',
+    print: 'طباعة',
     status: 'الحالة',
-    actions: 'إجراءات',
+    actions: 'الإجراءات',
     overview: 'نظرة عامة',
     confirm_delete: 'تأكيد الحذف',
-    logout: 'تسجيل الخروج',
+    active: 'نشط',
+    completed: 'مكتمل',
+    in_progress: 'قيد الإنجاز',
+    stopped: 'متوقف',
 
     // Production & Scrap
     target: 'الهدف المطلوب',
@@ -117,7 +176,7 @@ export const translations = {
     PRODUCT_DEFECT: 'عدم تطابق الجودة',
     OTHER: 'سبب آخر',
 
-    // Tablet
+    // Tablet Workstation
     start_production: 'بدء الإنتاج',
     pause_production: 'إيقاف مؤقت',
     finish_production: 'إنهاء أمر التصنيع',
@@ -125,26 +184,62 @@ export const translations = {
     record_production: 'تسجيل الكميات',
     record_waste: 'تسجيل الفواضل',
     online: 'متصل بالشبكة',
-    offline: 'غير متصل (في انتظار المزامنة)'
+    offline: 'غير متصل (في انتظار المزامنة)',
+    pieces_conforme: 'القطع واللفائف السليمة',
+    rebuts_perte: 'الفواضل والنفايات',
+    valider_cartons: 'تأكيد وتوليد الصناديق',
+    colisage: 'تعبئة الصندوق',
+    bobine_mere: 'اللفة الأم (Jumbo Roll)',
+    ajouter_ouvrier: 'إضافة عامل',
+    pin_code: 'الرمز السري PIN',
+
+    // Quality Control
+    conforme: 'مطابق للمواصفات',
+    non_conforme: 'غير مطابق',
+    defect_reason: 'سبب الرفض',
+    validated_qty: 'الكمية المؤكدة',
+    verify_lot: 'فحص وتأكيد الدفعة',
+    verify_carton: 'فحص وتأكيد الصندوق',
+    put_in_stock: 'تخزين في المستودع',
+
+    // Cartons & Traceability
+    carton_no: 'رقم الصندوق',
+    lot_no: 'رقم الدفعة / اللوت',
+    print_all: 'طباعة كافة الملصقات',
+    print_lot: 'طباعة الملصق العام للدفعة'
   },
+
   en: {
     // Navigation
     dashboard: 'Dashboard',
-    production: 'Production',
-    machines: 'Machines',
-    machine_stops: 'Machine Downtime',
+    production: 'Production Tracking',
+    machines: 'Machines & Lines',
+    machine_stops: 'Downtime & Stops',
     quality_control: 'Quality Control',
-    maintenance: 'Maintenance',
+    maintenance: 'Preventive Maintenance',
     production_history: 'Production History',
-    reports: 'Reports',
+    reports: 'Reports & KPIs',
     articles: 'Products & SKUs',
     raw_materials: 'Raw Materials',
     purchase_orders: 'Purchase Orders',
     manufacturing_orders: 'Manufacturing Orders',
-    cartons_labels: 'Cartons & QR Labels',
+    cartons_labels: 'Cartons & Labels',
+    company_profile: 'Plant Profile',
+    team_members: 'Team & Members',
+    subscription_quotas: 'Plan & Quotas',
     system_history: 'Audit Logs',
-    users: 'Users',
+    users: 'Users & PINs',
+    saas_supervision: 'Platform Admin',
     settings: 'Settings',
+    warehouses: 'Warehouse Locations',
+
+    // Header & Global
+    factory_portal: 'Factory Portal',
+    client_portal: 'Public Client Portal',
+    search: 'Search...',
+    loading: 'Loading...',
+    logout: 'Sign Out',
+    notifications: 'Notifications',
 
     // Common Actions
     add: 'Add',
@@ -152,13 +247,18 @@ export const translations = {
     delete: 'Delete',
     save: 'Save',
     cancel: 'Cancel',
-    search: 'Search...',
-    loading: 'Loading...',
+    confirm: 'Confirm',
+    filter: 'Filter',
+    export: 'Export',
+    print: 'Print',
     status: 'Status',
     actions: 'Actions',
     overview: 'Overview',
     confirm_delete: 'Confirm Delete',
-    logout: 'Sign Out',
+    active: 'Active',
+    completed: 'Completed',
+    in_progress: 'In Progress',
+    stopped: 'Stopped',
 
     // Production & Scrap
     target: 'Target',
@@ -180,7 +280,7 @@ export const translations = {
     PRODUCT_DEFECT: 'Product Quality Defect',
     OTHER: 'Other Reason',
 
-    // Tablet
+    // Tablet Workstation
     start_production: 'Start Production',
     pause_production: 'Pause Machine',
     finish_production: 'Finish Order',
@@ -188,6 +288,28 @@ export const translations = {
     record_production: 'Record Production',
     record_waste: 'Record Waste',
     online: 'Online',
-    offline: 'Offline Mode (Sync Pending)'
+    offline: 'Offline Mode (Sync Pending)',
+    pieces_conforme: 'Conforming Pieces / Rolls',
+    rebuts_perte: 'Scrap & Material Loss',
+    valider_cartons: 'Validate & Generate Cartons',
+    colisage: 'Carton Packaging',
+    bobine_mere: 'Jumbo Roll',
+    ajouter_ouvrier: 'Add Operator',
+    pin_code: 'PIN Code',
+
+    // Quality Control
+    conforme: 'Conforming / Passed',
+    non_conforme: 'Rejected',
+    defect_reason: 'Rejection Reason',
+    validated_qty: 'Validated Qty',
+    verify_lot: 'Verify Lot',
+    verify_carton: 'Verify Carton',
+    put_in_stock: 'Store in Warehouse',
+
+    // Cartons & Traceability
+    carton_no: 'Carton No',
+    lot_no: 'Lot No',
+    print_all: 'Print All Labels',
+    print_lot: 'Print Master Lot Label'
   }
 };

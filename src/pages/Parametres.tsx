@@ -440,8 +440,8 @@ export const Parametres = () => {
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">🇹🇳</span>
                       <div>
-                        <h4 className="font-semibold text-slate-900 text-sm">العربية (Arabic - RTL)</h4>
-                        <p className="text-xs text-slate-500">واجهة كاملة باللغة العربية مع دعم المحاذاة من اليمين إلى اليسار</p>
+                        <h4 className="font-semibold text-slate-900 text-sm">العربية (Arabic)</h4>
+                        <p className="text-xs text-slate-500">واجهة كاملة باللغة العربية مع المحافظة على التنسيق والتصميم القياسي</p>
                       </div>
                     </div>
                     <div className={`h-5 w-5 rounded-full border-4 ${language === 'ar' ? 'border-blue-600 bg-white' : 'border-slate-300'}`}></div>

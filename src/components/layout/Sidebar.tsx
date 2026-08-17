@@ -21,12 +21,12 @@ export function Sidebar() {
     { name: t.purchase_orders, path: '/admin/bons-de-commande', icon: 'receipt', allowedRoles: ['Administrator', 'Production Manager'] },
     { name: t.manufacturing_orders, path: '/admin/ordres-fabrication', icon: 'assignment', allowedRoles: ['Administrator', 'Production Manager'] },
     { name: t.cartons_labels, path: '/admin/cartons', icon: 'qr_code_2', allowedRoles: ['Administrator', 'Production Manager'] },
-    { name: 'Profil Usine', path: '/admin/company', icon: 'domain', allowedRoles: ['Administrator', 'Production Manager'] },
-    { name: 'Équipe & Membres', path: '/admin/tenant-users', icon: 'group_add', allowedRoles: ['Administrator'] },
-    { name: 'Forfait & Quotas', path: '/admin/subscription', icon: 'credit_card', allowedRoles: ['Administrator'] },
+    { name: t.company_profile, path: '/admin/company', icon: 'domain', allowedRoles: ['Administrator', 'Production Manager'] },
+    { name: t.team_members, path: '/admin/tenant-users', icon: 'group_add', allowedRoles: ['Administrator'] },
+    { name: t.subscription_quotas, path: '/admin/subscription', icon: 'credit_card', allowedRoles: ['Administrator'] },
     { name: t.system_history, path: '/admin/system-history', icon: 'manage_history', allowedRoles: ['Administrator'] },
     { name: t.users, path: '/admin/utilisateurs', icon: 'badge', allowedRoles: ['Administrator'] },
-    { name: 'Supervision SaaS', path: '/admin/saas', icon: 'monitoring', allowedRoles: ['Administrator'], devOnly: true },
+    { name: t.saas_supervision, path: '/admin/saas', icon: 'monitoring', allowedRoles: ['Administrator'], devOnly: true },
     { name: t.settings, path: '/admin/parametres', icon: 'settings', allowedRoles: ['Administrator'] },
   ];
 
