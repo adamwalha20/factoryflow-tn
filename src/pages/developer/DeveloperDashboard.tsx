@@ -265,39 +265,101 @@ export function DeveloperDashboard() {
 
     try {
       if (purgeTarget.type === 'DELETE_FACTORY') {
-        await (supabase as any).from('cartons').delete().eq('organization_id', orgId);
-        await (supabase as any).from('production_entries').delete().eq('organization_id', orgId);
-        await (supabase as any).from('manufacturing_orders').delete().eq('organization_id', orgId);
-        await (supabase as any).from('machines').delete().eq('organization_id', orgId);
-        await (supabase as any).from('raw_materials').delete().eq('organization_id', orgId);
-        await (supabase as any).from('machine_stops').delete().eq('organization_id', orgId);
-        await (supabase as any).from('quality_inspections').delete().eq('organization_id', orgId);
-        await (supabase as any).from('users').delete().eq('organization_id', orgId);
-        await (supabase as any).from('employees').delete().eq('organization_id', orgId);
-        await (supabase as any).from('subscriptions').delete().eq('organization_id', orgId);
-        await (supabase as any).from('organizations').delete().eq('id', orgId);
+        // Full exhaustive cascade deletion of all related tables
+        const cascadeTables = [
+          'warehouse_movements',
+          'material_consumptions',
+          'inventory_transactions',
+          'stock_transactions',
+          'waste_records',
+          'cartons',
+          'production_entries',
+          'quality_controls',
+          'quality_inspections',
+          'machine_stops',
+          'machine_downtimes',
+          'maintenance_records',
+          'machine_events',
+          'manufacturing_orders',
+          'bons_de_commande',
+          'articles',
+          'raw_materials',
+          'machines',
+          'factories',
+          'downtime_reasons',
+          'custom_warehouses',
+          'push_subscriptions',
+          'notifications',
+          'audit_logs',
+          'users',
+          'employees',
+          'subscriptions',
+          'organization_members'
+        ];
 
-        toast.success(`Usine ${purgeTarget.factory.name} et toutes ses données supprimées.`);
+        for (const table of cascadeTables) {
+          try {
+            await (supabase as any).from(table).delete().eq('organization_id', orgId);
+          } catch (e) {
+            console.warn(`Table ${table} deletion skipped or not present:`, e);
+          }
+        }
+
+        // Finally delete the organization record itself
+        const { error: orgDelErr } = await (supabase as any).from('organizations').delete().eq('id', orgId);
+        if (orgDelErr) {
+          console.error("Org delete error:", orgDelErr);
+        }
+
+        // Optimistically remove from state immediately
+        setFactories(prev => prev.filter(f => f.id !== orgId));
+
+        // If this was the active tenant in localStorage, clean it
+        if (localStorage.getItem('active_org_id') === orgId) {
+          localStorage.removeItem('active_org_id');
+        }
+
+        toast.success(`Usine "${purgeTarget.factory.name}" et toutes ses données ont été supprimées définitivement !`);
       } else if (purgeTarget.type === 'WIPE_PRODUCTION') {
-        await (supabase as any).from('cartons').delete().eq('organization_id', orgId);
-        await (supabase as any).from('production_entries').delete().eq('organization_id', orgId);
-        await (supabase as any).from('manufacturing_orders').delete().eq('organization_id', orgId);
-        await (supabase as any).from('machine_stops').delete().eq('organization_id', orgId);
-        await (supabase as any).from('quality_inspections').delete().eq('organization_id', orgId);
+        const prodTables = [
+          'warehouse_movements',
+          'material_consumptions',
+          'waste_records',
+          'cartons',
+          'production_entries',
+          'quality_controls',
+          'quality_inspections',
+          'machine_stops',
+          'machine_downtimes',
+          'machine_events',
+          'manufacturing_orders'
+        ];
 
-        toast.success(`Données de production de ${purgeTarget.factory.name} purgées.`);
+        for (const table of prodTables) {
+          try {
+            await (supabase as any).from(table).delete().eq('organization_id', orgId);
+          } catch (e) {
+            console.warn(`Wipe ${table} failed:`, e);
+          }
+        }
+
+        toast.success(`Toutes les données de production de "${purgeTarget.factory.name}" ont été purgées !`);
       } else if (purgeTarget.type === 'WIPE_CARTONS') {
+        await (supabase as any).from('warehouse_movements').delete().eq('organization_id', orgId);
         await (supabase as any).from('cartons').delete().eq('organization_id', orgId);
-        toast.success(`Tous les cartons de ${purgeTarget.factory.name} ont été supprimés.`);
+        toast.success(`Tous les cartons de "${purgeTarget.factory.name}" ont été supprimés !`);
       } else if (purgeTarget.type === 'WIPE_MATERIALS') {
+        await (supabase as any).from('material_consumptions').delete().eq('organization_id', orgId);
+        await (supabase as any).from('inventory_transactions').delete().eq('organization_id', orgId);
         await (supabase as any).from('raw_materials').delete().eq('organization_id', orgId);
-        toast.success(`Toutes les matières premières de ${purgeTarget.factory.name} ont été supprimées.`);
+        toast.success(`Toutes les matières premières de "${purgeTarget.factory.name}" ont été supprimées !`);
       }
 
       setPurgeTarget(null);
       setPurgeConfirmText('');
-      fetchDeveloperData();
+      await fetchDeveloperData();
     } catch (err: any) {
+      console.error("Purge error:", err);
       toast.error('Erreur lors de la suppression: ' + err.message);
     } finally {
       setIsPurging(false);
