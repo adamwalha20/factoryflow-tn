@@ -225,8 +225,8 @@ export const useProductionStore = create<ProductionStore>((set, get) => ({
       await (supabase as any).from('production_sessions').update({ machine_id: null }).eq('machine_id', id);
       await (supabase as any).from('production_entries').update({ machine_id: null }).eq('machine_id', id);
       await (supabase as any).from('machine_stops').delete().eq('machine_id', id);
-      await (supabase as any).from('maintenance_logs').delete().eq('machine_id', id);
-      await (supabase as any).from('quality_inspections').delete().eq('machine_id', id);
+      try { await (supabase as any).from('quality_controls').delete().eq('machine_id', id); } catch {}
+      try { await (supabase as any).from('quality_inspections').delete().eq('machine_id', id); } catch {}
 
       const { error } = await (supabase as any)
         .from('machines')

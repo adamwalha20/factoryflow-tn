@@ -702,16 +702,22 @@ export const useMesStore = create<MesStore>((set, get) => ({
       if (cartonError) throw cartonError;
 
       // 2. Log Quality Inspection (using lot_number to store carton_number)
-      const { error: qaError } = await (supabase as any)
-        .from('quality_inspections')
-        .insert([{
-          article_id: articleId,
+      try {
+        const orgId = getActiveOrgId();
+        const qcPayload = {
+          organization_id: orgId,
+          product_id: articleId || null,
           lot_number: cartonNumber,
           result: result,
           defect_description: defectDescription || null
-        }]);
-        
-      if (qaError) throw qaError;
+        };
+        const { error: err1 } = await (supabase as any).from('quality_controls').insert([qcPayload]);
+        if (err1) {
+          await (supabase as any).from('quality_inspections').insert([{ ...qcPayload, article_id: articleId }]);
+        }
+      } catch (logErr) {
+        console.warn('Quality log notice:', logErr);
+      }
 
       // 3. Log Warehouse Movement if conforme and location provided
       if (result === 'conforme' && warehouseLocation) {
@@ -906,19 +912,26 @@ export const useMesStore = create<MesStore>((set, get) => ({
       }));
 
       // 2. Log Quality Inspection for the LOT
-      const orderForMachine = cartonsInLot.length > 0 ? get().orders.find(o => o.id === cartonsInLot[0].of_id) : null;
-      const { error: qaError } = await (supabase as any)
-        .from('quality_inspections')
-        .insert([{
-          article_id: articleId,
+      try {
+        const orgId = getActiveOrgId();
+        const orderForMachine = cartonsInLot.length > 0 ? get().orders.find(o => o.id === cartonsInLot[0].of_id) : null;
+        const validQty = validatedQuantity !== undefined ? validatedQuantity : originalTotalQty;
+        const qcPayload = {
+          organization_id: orgId,
+          product_id: articleId || null,
           lot_number: lotNumber,
           result: result,
           machine_id: orderForMachine?.machine_id || null,
           defect_description: defectDescription || null,
-          validated_quantity: validatedQuantity !== undefined ? validatedQuantity : originalTotalQty
-        }]);
-        
-      if (qaError) throw qaError;
+          validated_qty: validQty
+        };
+        const { error: err1 } = await (supabase as any).from('quality_controls').insert([qcPayload]);
+        if (err1) {
+          await (supabase as any).from('quality_inspections').insert([{ ...qcPayload, article_id: articleId, validated_quantity: validQty }]);
+        }
+      } catch (logErr) {
+        console.warn('Quality lot log notice:', logErr);
+      }
 
       // 3. Log Warehouse Movements if conforme and location provided
       if (result === 'conforme' && warehouseLocation && fullCartons.length > 0) {
