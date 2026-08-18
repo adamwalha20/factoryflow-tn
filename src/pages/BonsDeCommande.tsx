@@ -4,6 +4,7 @@ import { useMesStore } from '../store/mesStore';
 import { useTenantStore } from '../store/tenantStore';
 import { useLanguageStore } from '../store/language';
 import { BonDeCommande, BonDeCommandeItem } from '../types/mes';
+import { extractTextFromPdf, parseBcText } from '../services/pdfBcParser';
 import toast from 'react-hot-toast';
 
 interface BcFormItem {
@@ -18,6 +19,8 @@ interface BcFormItem {
 
 export function BonsDeCommande() {
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const modalFileInputRef = useRef<HTMLInputElement>(null);
   const { 
     bons_de_commande, 
     articles, 
@@ -38,6 +41,7 @@ export function BonsDeCommande() {
   const [deletingBcId, setDeletingBcId] = useState<string | null>(null);
   const [printBc, setPrintBc] = useState<BonDeCommande | null>(null);
   const [isGeneratingOf, setIsGeneratingOf] = useState<string | null>(null);
+  const [isParsingPdf, setIsParsingPdf] = useState(false);
 
   // Form State
   const [bcNumber, setBcNumber] = useState('');
@@ -59,6 +63,48 @@ export function BonsDeCommande() {
   // Autocomplete state per item index
   const [activeItemIndex, setActiveItemIndex] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsParsingPdf(true);
+    const toastId = toast.loading(`Lecture et analyse du PDF "${file.name}"...`);
+
+    try {
+      const text = await extractTextFromPdf(file);
+      const parsed = parseBcText(text);
+
+      setEditingBcId(null);
+      setBcNumber(parsed.bc_number);
+      setCustomer(parsed.customer);
+      setReferenceClient(parsed.reference_client);
+      setAttention(parsed.attention);
+      setDepot(parsed.depot);
+      setDueDate(parsed.due_date);
+      setStatus('En attente');
+      setMandrinType(parsed.mandrin_type);
+      setCartonType(parsed.carton_type);
+      setEpaisseur(parsed.epaisseur);
+
+      setItems(parsed.items.map(it => ({
+        article_reference: it.article_reference,
+        article_designation: it.article_designation,
+        quantity: String(it.quantity || 1000),
+        unit: it.unit || 'RLX',
+        colisage: String(it.colisage || 36)
+      })));
+
+      setIsModalOpen(true);
+      toast.success(`✨ Bon de commande importé depuis le PDF (${parsed.items.length} articles détectés) !`, { id: toastId });
+    } catch (err: any) {
+      console.error('PDF parsing error:', err);
+      toast.error(`Erreur lecture PDF : ${err?.message || 'Format non reconnu'}`, { id: toastId });
+    } finally {
+      setIsParsingPdf(false);
+      if (e.target) e.target.value = '';
+    }
+  };
 
   useEffect(() => {
     fetchInitialData();
@@ -260,13 +306,31 @@ export function BonsDeCommande() {
           </div>
         </div>
 
-        <button 
-          onClick={handleOpenAddModal}
-          className="px-5 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-2xl font-black text-xs uppercase tracking-wider transition-all shadow-md shadow-blue-500/20 flex items-center gap-2"
-        >
-          <span className="material-symbols-outlined text-[18px]">add_circle</span>
-          <span>Nouveau Bon de Commande</span>
-        </button>
+        <div className="flex items-center gap-2.5">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handlePdfUpload}
+            accept=".pdf,application/pdf"
+            className="hidden"
+          />
+          <button 
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isParsingPdf}
+            className="px-4 py-3 bg-white hover:bg-slate-50 text-slate-800 border-2 border-slate-200 hover:border-blue-400 rounded-2xl font-bold text-xs uppercase tracking-wider transition-all shadow-sm flex items-center gap-2"
+          >
+            <span className="material-symbols-outlined text-[20px] text-rose-500">picture_as_pdf</span>
+            <span>{isParsingPdf ? 'Lecture PDF...' : 'Importer depuis PDF'}</span>
+          </button>
+
+          <button 
+            onClick={handleOpenAddModal}
+            className="px-5 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-2xl font-black text-xs uppercase tracking-wider transition-all shadow-md shadow-blue-500/20 flex items-center gap-2"
+          >
+            <span className="material-symbols-outlined text-[18px]">add_circle</span>
+            <span>Nouveau Bon de Commande</span>
+          </button>
+        </div>
       </div>
 
       {/* Main BC Table */}
@@ -495,6 +559,37 @@ export function BonsDeCommande() {
             {/* Modal Form Content */}
             <form id="bcMultiForm" onSubmit={handleSubmitForm} className="p-6 overflow-y-auto space-y-6 flex-1">
               
+              {/* 📄 PDF Auto-Fill Quick Action Dropzone */}
+              <div 
+                onClick={() => modalFileInputRef.current?.click()}
+                className="border-2 border-dashed border-blue-300 hover:border-blue-500 bg-blue-50/60 hover:bg-blue-50 p-4 rounded-2xl cursor-pointer transition-all flex items-center justify-between gap-4 group shadow-xs"
+              >
+                <input
+                  type="file"
+                  ref={modalFileInputRef}
+                  onChange={handlePdfUpload}
+                  accept=".pdf,application/pdf"
+                  className="hidden"
+                />
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform shrink-0">
+                    <span className="material-symbols-outlined text-[24px]">upload_file</span>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black text-blue-900 uppercase">
+                      Remplir automatiquement depuis un fichier PDF
+                    </h4>
+                    <p className="text-[11px] text-blue-700">
+                      Importez votre Bon de Commande PDF pour extraire le N° BC, Client, Date, et tous les articles instantanément
+                    </p>
+                  </div>
+                </div>
+                <span className="px-3.5 py-2 bg-blue-600 group-hover:bg-blue-500 text-white rounded-xl text-xs font-black shrink-0 shadow-sm flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[16px]">picture_as_pdf</span>
+                  <span>{isParsingPdf ? 'Lecture...' : 'Choisir PDF'}</span>
+                </span>
+              </div>
+
               {/* General Order Information */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-200/80">
                 <div>
