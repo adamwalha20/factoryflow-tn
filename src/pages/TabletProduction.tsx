@@ -102,12 +102,19 @@ export function TabletProduction() {
       if (legacyOp) setSelectedOperatorIds([legacyOp]);
     }
 
-    // Poll database every 2 seconds to ensure completely synced state
-    const interval = setInterval(() => {
-      fetchMesData();
-      fetchProdData();
-      fetchStops();
-    }, 2000);
+    // Supabase Realtime subscription for stops and machine status changes
+    const realtimeChannel = supabase.channel('tablet_realtime_sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'machine_stops' }, () => {
+        fetchStops();
+        fetchProdData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'machines' }, () => {
+        fetchProdData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'production_sessions' }, () => {
+        fetchProdData();
+      })
+      .subscribe();
 
     const handleOnline = () => {
       setIsOnline(true);
@@ -130,7 +137,7 @@ export function TabletProduction() {
     });
 
     return () => {
-      clearInterval(interval);
+      supabase.removeChannel(realtimeChannel);
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
