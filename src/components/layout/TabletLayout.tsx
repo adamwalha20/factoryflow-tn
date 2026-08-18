@@ -1,10 +1,19 @@
+import React, { useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useAuthStore } from '../../store/auth';
 import { ErrorBoundary } from '../../ErrorBoundary';
+import { initGlobalRealtimeSync } from '../../services/realtimeSync';
 
 export function TabletLayout() {
-  const { signOut } = useAuthStore();
+  const { employee, signOut } = useAuthStore();
   const machineName = localStorage.getItem('assigned_machine_name') || 'Poste Machine Atelier';
+
+  useEffect(() => {
+    const cleanup = initGlobalRealtimeSync(employee?.organization_id);
+    return () => {
+      if (cleanup) cleanup();
+    };
+  }, [employee?.organization_id]);
 
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900 flex flex-col font-sans select-none">

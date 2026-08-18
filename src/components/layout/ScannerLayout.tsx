@@ -1,9 +1,18 @@
+import React, { useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useAuthStore } from '../../store/auth';
 import { ErrorBoundary } from '../../ErrorBoundary';
+import { initGlobalRealtimeSync } from '../../services/realtimeSync';
 
 export function ScannerLayout() {
   const { employee, signOut } = useAuthStore();
+
+  useEffect(() => {
+    const cleanup = initGlobalRealtimeSync(employee?.organization_id);
+    return () => {
+      if (cleanup) cleanup();
+    };
+  }, [employee?.organization_id]);
 
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900 flex flex-col font-sans">
