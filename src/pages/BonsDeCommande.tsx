@@ -304,7 +304,16 @@ export function BonsDeCommande() {
                   ];
 
                   const totalQty = bcItems.reduce((acc, it) => acc + (it.quantity || 0), 0);
-                  const linkedOfs = orders.filter(o => o.bc_id === bc.id || o.bc_number === bc.bc_number);
+                  
+                  // Comprehensive search for all OFs belonging to this BC
+                  const linkedOfs = orders.filter(o => 
+                    (bc.id && o.bc_id === bc.id) ||
+                    (bc.bc_number && (o.bc_number === bc.bc_number || o.po_number === bc.bc_number)) ||
+                    (bc.bc_number && o.observation && o.observation.includes(bc.bc_number))
+                  );
+
+                  const isComplete = bc.status === 'Terminé' || (linkedOfs.length >= bcItems.length && bcItems.length > 0);
+                  const effectiveStatus = isComplete ? 'Terminé' : (linkedOfs.length > 0 ? 'En cours' : bc.status || 'En attente');
 
                   return (
                     <tr key={bc.id} className="hover:bg-blue-50/30 transition-colors group">
@@ -351,17 +360,30 @@ export function BonsDeCommande() {
                       </td>
                       <td className="p-4 text-center">
                         {linkedOfs.length > 0 ? (
-                          <div className="flex flex-wrap justify-center gap-1">
-                            {linkedOfs.map(of => (
-                              <span
-                                key={of.id}
-                                onClick={() => navigate('/admin/ordres-fabrication')}
-                                className="px-2 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-[10px] font-mono font-bold cursor-pointer hover:bg-emerald-100"
-                                title="Voir cet OF"
+                          <div className="flex flex-col items-center gap-1.5">
+                            <div className="flex flex-wrap justify-center gap-1">
+                              {linkedOfs.map(of => (
+                                <span
+                                  key={of.id}
+                                  onClick={() => navigate('/admin/ordres-fabrication')}
+                                  className="px-2 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-[10px] font-mono font-bold cursor-pointer hover:bg-emerald-100 flex items-center gap-1"
+                                  title="Voir cet OF dans les Ordres de Fabrication"
+                                >
+                                  <span className="material-symbols-outlined text-[12px]">check_circle</span>
+                                  {of.of_number}
+                                </span>
+                              ))}
+                            </div>
+                            {!isComplete && (
+                              <button
+                                onClick={() => handleGenerateOfs(bc.id)}
+                                disabled={isGeneratingOf === bc.id}
+                                className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg text-[10px] font-bold transition-all shadow-xs flex items-center gap-1"
                               >
-                                {of.of_number}
-                              </span>
-                            ))}
+                                <span className="material-symbols-outlined text-[12px]">bolt</span>
+                                <span>{isGeneratingOf === bc.id ? 'Création...' : `+ Générer reste (${bcItems.length - linkedOfs.length})`}</span>
+                              </button>
+                            )}
                           </div>
                         ) : (
                           <button
@@ -378,12 +400,13 @@ export function BonsDeCommande() {
                         {bc.due_date ? new Date(bc.due_date).toLocaleDateString() : '-'}
                       </td>
                       <td className="p-4">
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
-                          bc.status === 'Terminé' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
-                          bc.status === 'En cours' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase flex items-center gap-1 w-fit ${
+                          effectiveStatus === 'Terminé' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                          effectiveStatus === 'En cours' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
                           'bg-amber-50 text-amber-700 border border-amber-200'
                         }`}>
-                          {bc.status}
+                          {effectiveStatus === 'Terminé' && <span className="material-symbols-outlined text-[12px]">task_alt</span>}
+                          {effectiveStatus}
                         </span>
                       </td>
                       <td className="p-4 text-right">

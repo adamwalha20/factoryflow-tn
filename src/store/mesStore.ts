@@ -433,10 +433,10 @@ export const useMesStore = create<MesStore>((set, get) => ({
         }
       }
 
-      // Update BC with linked OF references in items
+      // Update BC with linked OF references in items and mark as Terminé
       await (supabase as any)
         .from('bons_de_commande')
-        .update({ items: updatedItems, status: 'En cours' })
+        .update({ items: updatedItems, status: 'Terminé' })
         .eq('id', bcId);
 
       // Refresh store state
