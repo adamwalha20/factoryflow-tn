@@ -408,7 +408,7 @@ export function DeveloperDashboard() {
   // KPIs
   const totalFactories = factories.length;
   const totalMachines = factories.reduce((sum, f) => sum + f.machine_count, 0);
-  const totalUsers = factories.reduce((sum, f) => sum + f.user_count + f.employee_count, 0);
+  const totalUsers = factories.reduce((sum, f) => sum + (f.employee_count || f.user_count || 0), 0);
   const totalCartons = factories.reduce((sum, f) => sum + f.carton_count, 0);
   const totalProdEntries = factories.reduce((sum, f) => sum + f.production_count, 0);
   const totalMRR = factories
@@ -757,7 +757,7 @@ export function DeveloperDashboard() {
                         </div>
                         <div className="bg-slate-950/60 rounded-xl p-2 border border-slate-800">
                           <span className="text-[10px] text-slate-500 uppercase font-bold block">Équipe / PINs</span>
-                          <span className="text-sm font-black text-purple-400 font-mono">{f.user_count + f.employee_count}</span>
+                          <span className="text-sm font-black text-purple-400 font-mono">{f.employee_count || f.user_count || 0}</span>
                         </div>
                         <div className="bg-slate-950/60 rounded-xl p-2 border border-slate-800">
                           <span className="text-[10px] text-slate-500 uppercase font-bold block">Ordres (OF)</span>
@@ -1101,10 +1101,14 @@ export function DeveloperDashboard() {
 
             <div className="bg-slate-950 rounded-2xl p-4 border border-slate-800 space-y-3">
               <h4 className="text-xs font-bold text-slate-400 uppercase">Volume des Enregistrements</h4>
-              <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="grid grid-cols-4 gap-3 text-center">
                 <div className="p-2 bg-slate-900 rounded-xl">
                   <span className="text-[10px] text-slate-500 uppercase block">Machines</span>
                   <span className="text-lg font-black text-cyan-400 font-mono">{detailedFactory.machine_count}</span>
+                </div>
+                <div className="p-2 bg-slate-900 rounded-xl">
+                  <span className="text-[10px] text-slate-500 uppercase block">Équipe (PINs)</span>
+                  <span className="text-lg font-black text-purple-400 font-mono">{detailedFactory.employee_count || detailedFactory.user_count || 0}</span>
                 </div>
                 <div className="p-2 bg-slate-900 rounded-xl">
                   <span className="text-[10px] text-slate-500 uppercase block">Ordres de Fab</span>
