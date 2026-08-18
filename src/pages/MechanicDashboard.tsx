@@ -178,22 +178,26 @@ export function MechanicDashboard() {
       })
       .subscribe();
 
-    // 2. Cross-tab instant BroadcastChannel
+    // 2. Cross-tab instant BroadcastChannel (with safe fallback for Opera/Safari)
     let bc: BroadcastChannel | null = null;
-    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
-      bc = new BroadcastChannel('factoryflow_panne_channel');
-      bc.onmessage = async (event) => {
-        console.log('Instant BroadcastChannel panne event:', event.data);
-        await fetchStops();
-        await fetchInitialData();
-        triggerPanneNotification({
-          id: 'bc-' + Date.now(),
-          machine_id: event.data.machine_id,
-          reason: event.data.reason,
-          comments: event.data.comments,
-          start_time: new Date().toISOString()
-        } as any);
-      };
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        bc = new BroadcastChannel('factoryflow_panne_channel');
+        bc.onmessage = async (event) => {
+          console.log('Instant BroadcastChannel panne event:', event.data);
+          await fetchStops();
+          await fetchInitialData();
+          triggerPanneNotification({
+            id: 'bc-' + Date.now(),
+            machine_id: event.data.machine_id,
+            reason: event.data.reason,
+            comments: event.data.comments,
+            start_time: new Date().toISOString()
+          } as any);
+        };
+      }
+    } catch (bcErr) {
+      console.warn('BroadcastChannel disabled or restricted:', bcErr);
     }
 
     // 3. LocalStorage Cross-Window Storage Event
