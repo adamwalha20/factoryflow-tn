@@ -258,8 +258,22 @@ export function TabletProduction() {
 
   const activeFilteredOperators = operators.filter(o => isShopfloorOperator(o.role || ''));
 
-  // Up to 4 active workers
+  // Up to 4 active workers currently on machine
   const activeWorkers = activeFilteredOperators.filter(o => selectedOperatorIds.includes(o.id));
+
+  // Auto-sanitize team selection so stale/foreign IDs are never counted
+  useEffect(() => {
+    if (activeFilteredOperators.length > 0) {
+      setSelectedOperatorIds(prev => {
+        const validIds = prev.filter(id => activeFilteredOperators.some(o => o.id === id));
+        if (validIds.length !== prev.length) {
+          localStorage.setItem('tablet_operator_ids', JSON.stringify(validIds));
+          return validIds;
+        }
+        return prev;
+      });
+    }
+  }, [activeFilteredOperators]);
 
   // PIN Pad Logic
   const handleOpenPinModal = (operator?: any) => {
@@ -299,9 +313,13 @@ export function TabletProduction() {
     const isValid = pinToTest === expectedPin || pinToTest === '0000' || pinToTest === '1234' || pinToTest === '1111';
 
     if (isValid) {
-      const nextTeam = selectedOperatorIds.includes(operator.id)
-        ? selectedOperatorIds
-        : [...selectedOperatorIds, operator.id].slice(0, 4); // Limit to 4 workers max
+      // 1. Clean current IDs so only active valid operators in this factory are kept
+      const currentValidIds = selectedOperatorIds.filter(id => activeFilteredOperators.some(o => o.id === id));
+      
+      // 2. Add new operator ID if not already present
+      const nextTeam = currentValidIds.includes(operator.id)
+        ? currentValidIds
+        : [...currentValidIds, operator.id].slice(0, 4);
 
       setSelectedOperatorIds(nextTeam);
       localStorage.setItem('tablet_operator_ids', JSON.stringify(nextTeam));
