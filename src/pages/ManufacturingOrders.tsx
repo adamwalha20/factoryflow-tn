@@ -229,6 +229,50 @@ export function ManufacturingOrders() {
     return `${prefix}${nextSeq}`;
   };
 
+  const isItemOfCreated = (bc: any, item: any, itemIndex: number) => {
+    if (item.of_id) {
+      const exists = orders.some(o => o.id === item.of_id);
+      if (exists) return true;
+    }
+    if (item.of_number) {
+      const exists = orders.some(o => o.of_number === item.of_number);
+      if (exists) return true;
+    }
+    const matchingOrder = orders.find(o => {
+      const isBcMatch = o.bc_id === bc.id || o.po_number === bc.bc_number || o.bc_number === bc.bc_number;
+      if (!isBcMatch) return false;
+      
+      const article = articles.find(a => a.id === o.article_id);
+      const isArticleMatch = article && item.article_reference && (article.reference?.toLowerCase() === item.article_reference?.toLowerCase());
+      const isOfNumberMatch = o.of_number === `OF-${bc.bc_number}-${itemIndex + 1}` || o.of_number === `OF-${bc.bc_number}`;
+      
+      return isArticleMatch || isOfNumberMatch;
+    });
+
+    return !!matchingOrder;
+  };
+
+  const getPendingBcItems = (bc: any) => {
+    const allItems = (bc.items && bc.items.length > 0)
+      ? bc.items
+      : [{
+          article_reference: bc.article_reference || '',
+          article_designation: bc.article_designation || '',
+          quantity: bc.quantity || 0,
+          unit: 'RLX',
+          colisage: 36,
+          mandrin_type: bc.mandrin_type || '',
+          carton_type: bc.carton_type || '',
+          epaisseur: bc.epaisseur || ''
+        }];
+
+    return allItems.map((item: any, idx: number) => ({
+      ...item,
+      originalIndex: idx,
+      isCreated: isItemOfCreated(bc, item, idx)
+    }));
+  };
+
   const handleAddClick = () => {
     setEditingOrderId(null);
     const nextOf = generateNextOfNumber(orders);
@@ -384,50 +428,64 @@ export function ManufacturingOrders() {
                       value={formData.po_number} 
                       onChange={e => {
                         const selectedBc = bons_de_commande.find(bc => bc.bc_number === e.target.value);
-                        const bcItems = (selectedBc?.items && selectedBc.items.length > 0)
-                          ? selectedBc.items
-                          : (selectedBc ? [{
-                              article_reference: selectedBc.article_reference || '',
-                              article_designation: selectedBc.article_designation || '',
-                              quantity: selectedBc.quantity || 0,
-                              unit: 'RLX',
-                              colisage: 36,
-                              mandrin_type: selectedBc.mandrin_type || '',
-                              carton_type: selectedBc.carton_type || '',
-                              epaisseur: selectedBc.epaisseur || ''
-                            }] : []);
+                        if (!selectedBc) {
+                          setFormData({
+                            ...formData,
+                            po_number: '',
+                            customer: '',
+                            due_date: '',
+                            article_id: '',
+                            quantity_planned: '',
+                            colisage: '36'
+                          });
+                          return;
+                        }
 
-                        const firstItem = bcItems[0];
+                        const itemsWithStatus = getPendingBcItems(selectedBc);
+                        const firstPendingItem = itemsWithStatus.find(i => !i.isCreated) || itemsWithStatus[0];
+
                         let matchedArticleId = formData.article_id;
-                        
-                        if (firstItem && firstItem.article_reference) {
-                          const article = articles.find(a => a.reference === firstItem.article_reference);
+                        if (firstPendingItem && firstPendingItem.article_reference) {
+                          const article = articles.find(a => a.reference?.toLowerCase() === firstPendingItem.article_reference?.toLowerCase());
                           if (article) matchedArticleId = article.id;
                         }
 
                         setFormData({
                           ...formData, 
                           po_number: e.target.value,
-                          customer: selectedBc ? selectedBc.customer : formData.customer,
-                          due_date: selectedBc && selectedBc.due_date ? selectedBc.due_date.split('T')[0] : formData.due_date,
+                          customer: selectedBc.customer,
+                          due_date: selectedBc.due_date ? selectedBc.due_date.split('T')[0] : formData.due_date,
                           article_id: matchedArticleId,
-                          quantity_planned: firstItem ? String(firstItem.quantity || 0) : (selectedBc && selectedBc.quantity ? selectedBc.quantity.toString() : formData.quantity_planned),
-                          colisage: firstItem && firstItem.colisage ? String(firstItem.colisage) : formData.colisage,
-                          mandrin_type: (firstItem && firstItem.mandrin_type) || (selectedBc && selectedBc.mandrin_type) || formData.mandrin_type,
-                          carton_model: (firstItem && firstItem.carton_type) || (selectedBc && selectedBc.carton_type) || formData.carton_model
+                          quantity_planned: firstPendingItem ? String(firstPendingItem.quantity || 0) : (selectedBc.quantity ? selectedBc.quantity.toString() : formData.quantity_planned),
+                          colisage: firstPendingItem && firstPendingItem.colisage ? String(firstPendingItem.colisage) : formData.colisage,
+                          mandrin_type: (firstPendingItem && firstPendingItem.mandrin_type) || selectedBc.mandrin_type || formData.mandrin_type,
+                          carton_model: (firstPendingItem && firstPendingItem.carton_type) || selectedBc.carton_type || formData.carton_model,
+                          observation: firstPendingItem ? `Article #${firstPendingItem.originalIndex + 1} du BC ${selectedBc.bc_number}` : formData.observation
                         });
                       }} 
                       className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-primary focus:border-primary font-bold"
                     >
                       <option value="">-- Sans Bon de Commande --</option>
-                      {bons_de_commande.map(bc => {
-                        const count = bc.items && bc.items.length > 0 ? bc.items.length : 1;
-                        return (
-                          <option key={bc.id} value={bc.bc_number}>
-                            {bc.bc_number} - {bc.customer} ({count} article{count > 1 ? 's' : ''})
-                          </option>
-                        );
-                      })}
+                      {bons_de_commande
+                        .filter(bc => {
+                          // Allow if editing an OF already linked to this BC
+                          if (bc.bc_number === formData.po_number || bc.id === (formData as any).bc_id) return true;
+                          if (bc.status === 'Terminé') return false;
+                          
+                          // Check if BC has at least one pending OF item
+                          const itemsWithStatus = getPendingBcItems(bc);
+                          return itemsWithStatus.some(it => !it.isCreated);
+                        })
+                        .map(bc => {
+                          const itemsWithStatus = getPendingBcItems(bc);
+                          const pendingCount = itemsWithStatus.filter(it => !it.isCreated).length;
+                          const totalCount = itemsWithStatus.length;
+                          return (
+                            <option key={bc.id} value={bc.bc_number}>
+                              {bc.bc_number} - {bc.customer} ({pendingCount}/{totalCount} OFs restants)
+                            </option>
+                          );
+                        })}
                     </select>
                   </div>
                   <div>
@@ -443,8 +501,11 @@ export function ManufacturingOrders() {
                 {/* If selected BC has items, show item selector & 1-click batch generator */}
                 {(() => {
                   const selectedBc = bons_de_commande.find(bc => bc.bc_number === formData.po_number);
-                  const bcItems = selectedBc?.items && selectedBc.items.length > 0 ? selectedBc.items : null;
-                  if (!selectedBc || !bcItems) return null;
+                  if (!selectedBc) return null;
+                  
+                  const itemsWithStatus = getPendingBcItems(selectedBc);
+                  const pendingItems = itemsWithStatus.filter(i => !i.isCreated);
+                  if (itemsWithStatus.length === 0) return null;
 
                   return (
                     <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
@@ -452,20 +513,22 @@ export function ManufacturingOrders() {
                         <div>
                           <h4 className="text-xs font-black text-blue-900 uppercase tracking-wider flex items-center gap-1.5">
                             <span className="material-symbols-outlined text-[18px] text-blue-600">format_list_bulleted</span>
-                            <span>Articles présents sur ce Bon de Commande ({bcItems.length})</span>
+                            <span>Articles du Bon de Commande ({pendingItems.length} restant{pendingItems.length > 1 ? 's' : ''} sur {itemsWithStatus.length})</span>
                           </h4>
                           <p className="text-[11px] text-blue-700 mt-0.5">
-                            Sélectionnez l'article spécifique pour cet OF ou générez tous les OFs du BC d'un coup.
+                            {pendingItems.length > 0
+                              ? "Cliquez sur un article non encore créé pour remplir automatiquement cet OF."
+                              : "Tous les OFs de ce Bon de Commande ont déjà été générés !"}
                           </p>
                         </div>
 
-                        {bcItems.length > 1 && (
+                        {pendingItems.length > 1 && (
                           <button
                             type="button"
                             onClick={async () => {
                               try {
                                 const created = await generateOfsFromBc(selectedBc.id);
-                                toast.success(`${created.length} Ordres de Fabrication créés automatiquement pour chaque article !`);
+                                toast.success(`${created.length} Ordres de Fabrication créés automatiquement pour chaque article restant !`);
                                 setIsModalOpen(false);
                               } catch (err: any) {
                                 toast.error('Erreur : ' + err.message);
@@ -474,22 +537,46 @@ export function ManufacturingOrders() {
                             className="px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg text-xs font-black shadow-md flex items-center gap-1.5 shrink-0"
                           >
                             <span className="material-symbols-outlined text-[16px]">bolt</span>
-                            <span>Créer les {bcItems.length} OFs en 1 Clic</span>
+                            <span>Générer les {pendingItems.length} OFs Restants en 1 Clic</span>
                           </button>
                         )}
                       </div>
 
                       {/* Select which specific article line of this BC to build this OF for */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                        {bcItems.map((item, idx) => {
-                          const isSelected = articles.find(a => a.id === formData.article_id)?.reference === item.article_reference && formData.quantity_planned === String(item.quantity);
+                        {itemsWithStatus.map((item, idx) => {
+                          const isSelected = !item.isCreated && articles.find(a => a.id === formData.article_id)?.reference?.toLowerCase() === item.article_reference?.toLowerCase() && formData.quantity_planned === String(item.quantity);
+                          
+                          if (item.isCreated) {
+                            return (
+                              <div
+                                key={idx}
+                                className="p-3 rounded-xl border border-gray-200 bg-gray-100 opacity-60 text-left flex items-center justify-between gap-2 cursor-not-allowed"
+                              >
+                                <div>
+                                  <span className="text-[10px] font-mono font-bold text-emerald-700 block flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                                    LIGNE #{item.originalIndex + 1} — DÉJÀ CRÉÉ
+                                  </span>
+                                  <span className="font-mono font-bold text-xs text-gray-700">{item.article_reference}</span>
+                                  {item.article_designation && (
+                                    <span className="text-[11px] block truncate max-w-xs text-gray-500">{item.article_designation}</span>
+                                  )}
+                                </div>
+                                <span className="font-mono font-bold text-xs text-gray-500">
+                                  {item.quantity?.toLocaleString()} {item.unit || 'RLX'}
+                                </span>
+                              </div>
+                            );
+                          }
+
                           return (
                             <button
                               type="button"
                               key={idx}
                               onClick={() => {
                                 let matchedId = formData.article_id;
-                                const art = articles.find(a => a.reference === item.article_reference);
+                                const art = articles.find(a => a.reference?.toLowerCase() === item.article_reference?.toLowerCase());
                                 if (art) matchedId = art.id;
 
                                 setFormData({
@@ -499,7 +586,7 @@ export function ManufacturingOrders() {
                                   colisage: item.colisage ? String(item.colisage) : formData.colisage,
                                   mandrin_type: item.mandrin_type || selectedBc.mandrin_type || formData.mandrin_type,
                                   carton_model: item.carton_type || selectedBc.carton_type || formData.carton_model,
-                                  observation: `Article #${idx + 1} du BC ${selectedBc.bc_number}`
+                                  observation: `Article #${item.originalIndex + 1} du BC ${selectedBc.bc_number}`
                                 });
                               }}
                               className={`p-3 rounded-xl border text-left transition-all flex items-center justify-between gap-2 ${
@@ -510,7 +597,7 @@ export function ManufacturingOrders() {
                             >
                               <div>
                                 <span className={`text-[10px] font-mono font-bold block ${isSelected ? 'text-blue-200' : 'text-blue-600'}`}>
-                                  LIGNE #{idx + 1}
+                                  LIGNE #{item.originalIndex + 1} (À CRÉER)
                                 </span>
                                 <span className="font-mono font-bold text-xs">{item.article_reference}</span>
                                 {item.article_designation && (
