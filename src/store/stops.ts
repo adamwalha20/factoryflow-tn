@@ -55,13 +55,21 @@ export const useStopsStore = create<StopsStore>((set, get) => ({
   declareStop: async (data: any) => {
     try {
       const orgId = getActiveOrgId();
+      const payload: any = {
+        organization_id: orgId,
+        machine_id: data.machine_id,
+        reason: data.reason,
+        status: data.status || 'En cours',
+        comments: data.comments || null,
+        start_time: data.start_time || new Date().toISOString()
+      };
+      if (data.operator_id) {
+        payload.operator_id = data.operator_id;
+      }
+
       const { data: newStop, error } = await (supabase as any)
         .from('machine_stops')
-        .insert([{ 
-          ...data, 
-          organization_id: orgId,
-          start_time: new Date().toISOString() 
-        }])
+        .insert([payload])
         .select()
         .single();
 
