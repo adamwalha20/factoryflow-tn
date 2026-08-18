@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import { scheduleOrders } from '../lib/ai';
 
 export function ManufacturingOrders() {
-  const { orders, articles, production_entries, bons_de_commande, loading, error, fetchInitialData, addOrder, updateOrder, deleteOrder, updateOrderStatus } = useMesStore();
+  const { orders, articles, production_entries, bons_de_commande, loading, error, fetchInitialData, addOrder, updateOrder, deleteOrder, updateOrderStatus, generateOfsFromBc } = useMesStore();
   const { machines, fetchInitialData: fetchProductionData } = useProductionStore();
   const { t } = useLanguageStore();
 
@@ -373,8 +373,10 @@ export function ManufacturingOrders() {
               <div className="space-y-4">
                 <h3 className="text-lg font-bold text-primary flex items-center gap-2 border-b border-gray-100 pb-2">
                   <span className="material-symbols-outlined">receipt_long</span>
-                  1. Bon de Commande Interne
+                  1. Bon de Commande Interne (BC)
                 </h3>
+                
+                {/* BC Selector and details */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1">Sélectionner un Bon de Commande</label>
@@ -382,10 +384,24 @@ export function ManufacturingOrders() {
                       value={formData.po_number} 
                       onChange={e => {
                         const selectedBc = bons_de_commande.find(bc => bc.bc_number === e.target.value);
+                        const bcItems = (selectedBc?.items && selectedBc.items.length > 0)
+                          ? selectedBc.items
+                          : (selectedBc ? [{
+                              article_reference: selectedBc.article_reference || '',
+                              article_designation: selectedBc.article_designation || '',
+                              quantity: selectedBc.quantity || 0,
+                              unit: 'RLX',
+                              colisage: 36,
+                              mandrin_type: selectedBc.mandrin_type || '',
+                              carton_type: selectedBc.carton_type || '',
+                              epaisseur: selectedBc.epaisseur || ''
+                            }] : []);
+
+                        const firstItem = bcItems[0];
                         let matchedArticleId = formData.article_id;
                         
-                        if (selectedBc && selectedBc.article_reference) {
-                          const article = articles.find(a => a.reference === selectedBc.article_reference);
+                        if (firstItem && firstItem.article_reference) {
+                          const article = articles.find(a => a.reference === firstItem.article_reference);
                           if (article) matchedArticleId = article.id;
                         }
 
@@ -395,35 +411,129 @@ export function ManufacturingOrders() {
                           customer: selectedBc ? selectedBc.customer : formData.customer,
                           due_date: selectedBc && selectedBc.due_date ? selectedBc.due_date.split('T')[0] : formData.due_date,
                           article_id: matchedArticleId,
-                          quantity_planned: selectedBc && selectedBc.quantity ? selectedBc.quantity.toString() : formData.quantity_planned,
-                          mandrin_type: selectedBc && selectedBc.mandrin_type ? selectedBc.mandrin_type : formData.mandrin_type,
-                          carton_model: selectedBc && selectedBc.carton_type ? selectedBc.carton_type : formData.carton_model
+                          quantity_planned: firstItem ? String(firstItem.quantity || 0) : (selectedBc && selectedBc.quantity ? selectedBc.quantity.toString() : formData.quantity_planned),
+                          colisage: firstItem && firstItem.colisage ? String(firstItem.colisage) : formData.colisage,
+                          mandrin_type: (firstItem && firstItem.mandrin_type) || (selectedBc && selectedBc.mandrin_type) || formData.mandrin_type,
+                          carton_model: (firstItem && firstItem.carton_type) || (selectedBc && selectedBc.carton_type) || formData.carton_model
                         });
                       }} 
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-primary focus:border-primary"
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-primary focus:border-primary font-bold"
                     >
                       <option value="">-- Sans Bon de Commande --</option>
-                      {bons_de_commande
-                        .filter(bc => {
-                          if (bc.bc_number === formData.po_number) return true;
-                          if (bc.status === 'Terminé') return false;
-                          const hasOF = orders.some(o => o.po_number === bc.bc_number);
-                          return !hasOF;
-                        })
-                        .map(bc => (
-                          <option key={bc.id} value={bc.bc_number}>{bc.bc_number} - {bc.customer}</option>
-                      ))}
+                      {bons_de_commande.map(bc => {
+                        const count = bc.items && bc.items.length > 0 ? bc.items.length : 1;
+                        return (
+                          <option key={bc.id} value={bc.bc_number}>
+                            {bc.bc_number} - {bc.customer} ({count} article{count > 1 ? 's' : ''})
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1">Client *</label>
-                    <input required type="text" placeholder="ex: AFRICA TRADE" value={formData.customer} onChange={e => setFormData({...formData, customer: e.target.value})} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-primary focus:border-primary" />
+                    <input required type="text" placeholder="ex: AFRICA TRADE" value={formData.customer} onChange={e => setFormData({...formData, customer: e.target.value})} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-primary focus:border-primary font-bold" />
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1">Date de livraison prévue</label>
                     <input type="date" value={formData.due_date} onChange={e => setFormData({...formData, due_date: e.target.value})} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-primary focus:border-primary" />
                   </div>
                 </div>
+
+                {/* If selected BC has items, show item selector & 1-click batch generator */}
+                {(() => {
+                  const selectedBc = bons_de_commande.find(bc => bc.bc_number === formData.po_number);
+                  const bcItems = selectedBc?.items && selectedBc.items.length > 0 ? selectedBc.items : null;
+                  if (!selectedBc || !bcItems) return null;
+
+                  return (
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                        <div>
+                          <h4 className="text-xs font-black text-blue-900 uppercase tracking-wider flex items-center gap-1.5">
+                            <span className="material-symbols-outlined text-[18px] text-blue-600">format_list_bulleted</span>
+                            <span>Articles présents sur ce Bon de Commande ({bcItems.length})</span>
+                          </h4>
+                          <p className="text-[11px] text-blue-700 mt-0.5">
+                            Sélectionnez l'article spécifique pour cet OF ou générez tous les OFs du BC d'un coup.
+                          </p>
+                        </div>
+
+                        {bcItems.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                const created = await generateOfsFromBc(selectedBc.id);
+                                toast.success(`${created.length} Ordres de Fabrication créés automatiquement pour chaque article !`);
+                                setIsModalOpen(false);
+                              } catch (err: any) {
+                                toast.error('Erreur : ' + err.message);
+                              }
+                            }}
+                            className="px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg text-xs font-black shadow-md flex items-center gap-1.5 shrink-0"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">bolt</span>
+                            <span>Créer les {bcItems.length} OFs en 1 Clic</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Select which specific article line of this BC to build this OF for */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                        {bcItems.map((item, idx) => {
+                          const isSelected = articles.find(a => a.id === formData.article_id)?.reference === item.article_reference && formData.quantity_planned === String(item.quantity);
+                          return (
+                            <button
+                              type="button"
+                              key={idx}
+                              onClick={() => {
+                                let matchedId = formData.article_id;
+                                const art = articles.find(a => a.reference === item.article_reference);
+                                if (art) matchedId = art.id;
+
+                                setFormData({
+                                  ...formData,
+                                  article_id: matchedId,
+                                  quantity_planned: String(item.quantity || 0),
+                                  colisage: item.colisage ? String(item.colisage) : formData.colisage,
+                                  mandrin_type: item.mandrin_type || selectedBc.mandrin_type || formData.mandrin_type,
+                                  carton_model: item.carton_type || selectedBc.carton_type || formData.carton_model,
+                                  observation: `Article #${idx + 1} du BC ${selectedBc.bc_number}`
+                                });
+                              }}
+                              className={`p-3 rounded-xl border text-left transition-all flex items-center justify-between gap-2 ${
+                                isSelected
+                                  ? 'bg-blue-600 text-white border-blue-700 shadow-sm'
+                                  : 'bg-white text-slate-900 border-blue-200 hover:border-blue-400'
+                              }`}
+                            >
+                              <div>
+                                <span className={`text-[10px] font-mono font-bold block ${isSelected ? 'text-blue-200' : 'text-blue-600'}`}>
+                                  LIGNE #{idx + 1}
+                                </span>
+                                <span className="font-mono font-bold text-xs">{item.article_reference}</span>
+                                {item.article_designation && (
+                                  <span className={`text-[11px] block truncate max-w-xs ${isSelected ? 'text-blue-100' : 'text-slate-500'}`}>
+                                    {item.article_designation}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-right shrink-0">
+                                <span className={`font-mono font-black text-sm block ${isSelected ? 'text-white' : 'text-blue-900'}`}>
+                                  {item.quantity?.toLocaleString()} {item.unit || 'RLX'}
+                                </span>
+                                <span className={`text-[10px] ${isSelected ? 'text-blue-200' : 'text-slate-400'}`}>
+                                  Colisage: {item.colisage || 36}
+                                </span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="space-y-4">
