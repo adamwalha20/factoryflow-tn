@@ -375,6 +375,24 @@ export function TabletProduction() {
         comments: panneComment.trim() || undefined,
         status: 'En cours'
       });
+
+      // Broadcast instant alarm to Mechanic Dashboard across tabs and windows
+      try {
+        const alarmData = {
+          machine_id: selectedMachineId,
+          machine_name: currentMachine?.name || 'Machine',
+          reason: panneReason,
+          comments: panneComment.trim(),
+          timestamp: Date.now()
+        };
+        if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+          const bc = new BroadcastChannel('factoryflow_panne_channel');
+          bc.postMessage(alarmData);
+          bc.close();
+        }
+        localStorage.setItem('factoryflow_panne_broadcast', JSON.stringify(alarmData));
+      } catch {}
+
       toast.success(`Arrêt / Panne (${panneReason}) déclaré ! Équipe de maintenance alertée.`);
       setIsPanneModalOpen(false);
       setPanneComment('');

@@ -15,26 +15,31 @@ export function MechanicDashboard() {
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(() => {
     return typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default';
   });
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
 
-  // Local ticker to smoothly refresh elapsed time display without hitting DB
+  // Local ticker to smoothly refresh elapsed time display
   const [, setClockTick] = useState(0);
 
   // Filter for all active stops
   const activeStops = stops.filter(stop => !stop.end_time && stop.status !== 'Résolu');
+  const knownActiveStopIds = useRef<Set<string>>(new Set());
 
-  // Synthesized Industrial Alarm Sound (Web Audio API)
+  // Synthesized Industrial Alarm Siren (Web Audio API)
   const playIndustrialAlarm = useCallback(() => {
     try {
       const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
       if (!AudioCtxClass) return;
       const audioCtx = new AudioCtxClass();
-      
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+
       const playTone = (freq: number, start: number, duration: number) => {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         osc.type = 'sawtooth';
         osc.frequency.setValueAtTime(freq, audioCtx.currentTime + start);
-        gain.gain.setValueAtTime(0.2, audioCtx.currentTime + start);
+        gain.gain.setValueAtTime(0.25, audioCtx.currentTime + start);
         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + start + duration);
         osc.connect(gain);
         gain.connect(audioCtx.destination);
@@ -42,30 +47,30 @@ export function MechanicDashboard() {
         osc.stop(audioCtx.currentTime + start + duration);
       };
 
-      // 3-tone high urgency industrial alarm sequence
-      playTone(880, 0, 0.25);
-      playTone(1100, 0.3, 0.25);
-      playTone(880, 0.6, 0.25);
-      playTone(1320, 0.9, 0.5);
+      // 4-tone high urgency industrial siren
+      playTone(950, 0, 0.25);
+      playTone(1250, 0.28, 0.25);
+      playTone(950, 0.56, 0.25);
+      playTone(1400, 0.84, 0.45);
+      setAudioUnlocked(true);
     } catch (e) {
-      console.warn('Audio alarm playback blocked or failed:', e);
+      console.warn('Audio alarm playback error:', e);
     }
   }, []);
 
-  // Trigger Notification when a new breakdown occurs
+  // Trigger Full Alert Notification when a breakdown occurs
   const triggerPanneNotification = useCallback((stopData: MachineStop) => {
-    // 1. Play Sound
     playIndustrialAlarm();
 
     const machine = machines.find(m => m.id === stopData.machine_id);
     const title = "🚨 ALERTE PANNE MACHINE";
     const body = `${machine?.name || 'Machine Atelier'} : ${stopData.reason}${stopData.comments ? ` — "${stopData.comments}"` : ''}`;
 
-    // 2. In-App Pop-up Toast
+    // In-App Floating Alert Banner
     toast.custom((t) => (
-      <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-md w-full bg-slate-900 text-white border-2 border-rose-500 shadow-2xl rounded-2xl pointer-events-auto flex overflow-hidden`}>
-        <div className="p-4 flex items-center gap-3.5 flex-1">
-          <div className="w-12 h-12 rounded-xl bg-rose-600/30 border border-rose-500 flex items-center justify-center text-rose-400 shrink-0">
+      <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-md w-full bg-slate-900 text-white border-2 border-rose-500 shadow-2xl rounded-3xl pointer-events-auto flex overflow-hidden ring-4 ring-rose-500/20`}>
+        <div className="p-4 sm:p-5 flex items-center gap-3.5 flex-1">
+          <div className="w-12 h-12 rounded-2xl bg-rose-600/30 border border-rose-500 flex items-center justify-center text-rose-400 shrink-0 shadow-lg">
             <span className="material-symbols-outlined text-[28px] animate-pulse">car_crash</span>
           </div>
           <div>
@@ -75,14 +80,14 @@ export function MechanicDashboard() {
         </div>
         <button
           onClick={() => toast.dismiss(t.id)}
-          className="px-4 border-l border-slate-800 bg-slate-800/50 hover:bg-slate-800 text-slate-400 hover:text-white text-xs font-bold transition-colors"
+          className="px-5 border-l border-slate-800 bg-slate-800/50 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-black transition-colors"
         >
-          OK
+          VU
         </button>
       </div>
-    ), { duration: 8000, position: 'top-center' });
+    ), { duration: 12000, position: 'top-center' });
 
-    // 3. Desktop / OS Web Notification with Vibration
+    // Desktop OS Notification
     if ('Notification' in window && Notification.permission === 'granted') {
       try {
         const notif = new Notification(title, {
@@ -97,26 +102,45 @@ export function MechanicDashboard() {
       } catch {}
 
       if ('vibrate' in navigator) {
-        navigator.vibrate([300, 150, 300, 150, 500]);
+        navigator.vibrate([400, 150, 400, 150, 600]);
       }
     }
   }, [machines, playIndustrialAlarm]);
 
-  // Request Notification Permissions
+  // Request Notification Permissions & Unlock Audio
   const handleRequestNotificationPermission = async () => {
+    playIndustrialAlarm();
     if ('Notification' in window) {
       const perm = await Notification.requestPermission();
       setNotificationPermission(perm);
       if (perm === 'granted') {
-        toast.success('Notifications de bureau activées avec succès !');
-        playIndustrialAlarm();
+        toast.success('Son et notifications bureau activés avec succès !');
       } else {
-        toast.error('Autorisation des notifications refusée.');
+        toast('Son activé. Autorisation notification système requise.', { icon: '🔔' });
       }
     }
   };
 
-  // Setup Initial Fetch and Supabase Realtime Channels (No 2s Polling!)
+  // Auto-unlock AudioContext on first page interaction
+  useEffect(() => {
+    const unlockAudio = () => {
+      try {
+        const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioCtxClass) {
+          const ctx = new AudioCtxClass();
+          ctx.resume().then(() => setAudioUnlocked(true));
+        }
+      } catch {}
+    };
+    window.addEventListener('click', unlockAudio, { once: true });
+    window.addEventListener('touchstart', unlockAudio, { once: true });
+    return () => {
+      window.removeEventListener('click', unlockAudio);
+      window.removeEventListener('touchstart', unlockAudio);
+    };
+  }, []);
+
+  // Multi-Channel Real-Time Subscriptions (Supabase Realtime + BroadcastChannel + LocalStorage)
   useEffect(() => {
     const orgParam = searchParams.get('org');
     if (orgParam && orgParam !== localStorage.getItem('active_org_id')) {
@@ -128,18 +152,17 @@ export function MechanicDashboard() {
     fetchStops();
     fetchInitialData();
 
-    // Supabase Realtime WebSocket Connection
+    // 1. Supabase Realtime WebSocket Channel
     const channel = supabase.channel('mechanic_realtime_stops')
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
         table: 'machine_stops' 
       }, async (payload: any) => {
-        console.log('Realtime panne update received directly from DB:', payload);
+        console.log('Realtime panne update received from DB:', payload);
         await fetchStops();
         await fetchInitialData();
 
-        // If a new stop is inserted or set to in-progress
         if (payload.eventType === 'INSERT') {
           triggerPanneNotification(payload.new as MachineStop);
         } else if (payload.eventType === 'UPDATE' && !payload.new?.end_time && payload.new?.status === 'En cours') {
@@ -155,16 +178,65 @@ export function MechanicDashboard() {
       })
       .subscribe();
 
-    // Local 10-second timer strictly for updating elapsed time counters in the UI
-    const clockInterval = setInterval(() => {
+    // 2. Cross-tab instant BroadcastChannel
+    let bc: BroadcastChannel | null = null;
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      bc = new BroadcastChannel('factoryflow_panne_channel');
+      bc.onmessage = async (event) => {
+        console.log('Instant BroadcastChannel panne event:', event.data);
+        await fetchStops();
+        await fetchInitialData();
+        triggerPanneNotification({
+          id: 'bc-' + Date.now(),
+          machine_id: event.data.machine_id,
+          reason: event.data.reason,
+          comments: event.data.comments,
+          start_time: new Date().toISOString()
+        } as any);
+      };
+    }
+
+    // 3. LocalStorage Cross-Window Storage Event
+    const handleStorageChange = async (e: StorageEvent) => {
+      if (e.key === 'factoryflow_panne_broadcast' && e.newValue) {
+        try {
+          const data = JSON.parse(e.newValue);
+          await fetchStops();
+          await fetchInitialData();
+          triggerPanneNotification({
+            id: 'storage-' + Date.now(),
+            machine_id: data.machine_id,
+            reason: data.reason,
+            comments: data.comments,
+            start_time: new Date().toISOString()
+          } as any);
+        } catch {}
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    // 4. Smooth 5-second background sync to guarantee no missed alarms
+    const heartbeat = setInterval(() => {
+      fetchStops();
       setClockTick(prev => prev + 1);
-    }, 10000);
+    }, 5000);
 
     return () => {
       supabase.removeChannel(channel);
-      clearInterval(clockInterval);
+      if (bc) bc.close();
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(heartbeat);
     };
   }, [fetchStops, fetchInitialData, fetchTenantData, searchParams, triggerPanneNotification]);
+
+  // Track and detect new stops on state changes
+  useEffect(() => {
+    activeStops.forEach(stop => {
+      if (!knownActiveStopIds.current.has(stop.id)) {
+        knownActiveStopIds.current.add(stop.id);
+      }
+    });
+  }, [activeStops]);
 
   const getMachine = (id: string | null) => machines.find(m => m.id === id);
 
@@ -201,44 +273,54 @@ export function MechanicDashboard() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto px-4 py-6 font-sans">
       
+      {/* 🚨 PROMINENT AUDIO & NOTIFICATION ACTIVATION BANNER */}
+      {(!audioUnlocked || notificationPermission !== 'granted') && (
+        <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 border border-blue-500/40 rounded-3xl p-5 text-white shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5 text-center sm:text-left">
+            <div className="w-12 h-12 rounded-2xl bg-blue-600/30 border border-blue-400 flex items-center justify-center text-blue-300 shrink-0">
+              <span className="material-symbols-outlined text-[28px] animate-bounce">notifications_active</span>
+            </div>
+            <div>
+              <h3 className="text-sm sm:text-base font-black">Activer le Système d'Alerte Sonore & Notifications Push</h3>
+              <p className="text-xs text-blue-200 mt-0.5">
+                Cliquez pour débloquer la sirène d'alarme et recevoir les pannes en direct même en arrière-plan.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={handleRequestNotificationPermission}
+            className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 text-white rounded-2xl font-black text-xs sm:text-sm shadow-lg shadow-blue-500/30 transition-transform active:scale-95 flex items-center justify-center gap-2 shrink-0"
+          >
+            <span className="material-symbols-outlined text-[18px]">volume_up</span>
+            <span>Activer Alarme & Notifications</span>
+          </button>
+        </div>
+      )}
+
       {/* Header & Realtime Telemetry Bar */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-3xl border border-gray-200 shadow-sm">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center shadow-sm">
-            <span className="material-symbols-outlined text-[32px]">engineering</span>
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl font-black text-gray-900 tracking-tight">Tableau de Bord des Interventions</h1>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+              TEMPS RÉEL ACTIF
+            </span>
           </div>
-          <div>
-            <div className="flex items-center gap-2.5">
-              <h1 className="text-2xl font-black text-gray-900 tracking-tight">Tableau de Bord Mécanicien</h1>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-50 text-emerald-700 border border-emerald-200">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                TEMPS RÉEL ACTIF
-              </span>
-            </div>
-            <p className="text-xs text-gray-500 font-medium mt-1">
-              Supervision directe des pannes et interventions machine sans rafraîchissement
-            </p>
-          </div>
+          <p className="text-xs text-gray-500 font-medium mt-1">
+            Supervision directe des arrêts déclarés depuis les tablettes d'atelier
+          </p>
         </div>
 
         <div className="flex items-center gap-3 flex-wrap">
-          {notificationPermission !== 'granted' && (
-            <button
-              onClick={handleRequestNotificationPermission}
-              className="px-4 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-2xl text-xs font-black transition-all flex items-center gap-2 shadow-sm animate-bounce"
-            >
-              <span className="material-symbols-outlined text-[18px] text-amber-600">notifications_active</span>
-              <span>Activer Notifications & Son</span>
-            </button>
-          )}
-
           <button
             onClick={playIndustrialAlarm}
             title="Tester l'alarme sonore"
-            className="px-3.5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-2xl text-xs font-bold transition-colors flex items-center gap-1.5"
+            className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-xs font-bold transition-colors flex items-center gap-1.5"
           >
-            <span className="material-symbols-outlined text-[18px]">volume_up</span>
-            <span>Test Alarme</span>
+            <span className="material-symbols-outlined text-[18px] text-blue-600">volume_up</span>
+            <span>Tester l'Alarme</span>
           </button>
 
           <div className={`px-4 py-2.5 rounded-2xl font-black text-xs flex items-center gap-2 border shadow-sm ${
@@ -262,7 +344,7 @@ export function MechanicDashboard() {
           </div>
           <h3 className="text-2xl font-black text-gray-900">Toutes les machines sont opérationnelles</h3>
           <p className="text-sm text-gray-500 max-w-md mx-auto">
-            Aucun arrêt ou panne machine en cours. Dès qu'un opérateur signale une anomalie depuis sa tablette, cette page se mettra à jour en direct avec alerte sonore.
+            Aucun arrêt ou panne machine en cours. Dès qu'un opérateur signale une anomalie depuis sa tablette, cette page déclenchera immédiatement l'alarme sonore et la notification.
           </p>
         </div>
       ) : (
