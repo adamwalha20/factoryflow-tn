@@ -53,6 +53,10 @@ export function TabletProduction() {
   const [qcMetrage, setQcMetrage] = useState<string>('');
   const [qcPoids, setQcPoids] = useState<string>('');
 
+  // Production Submit Lock & Cooldown States
+  const [isSubmittingProduction, setIsSubmittingProduction] = useState<boolean>(false);
+  const [cooldownSeconds, setCooldownSeconds] = useState<number>(0);
+
   // Operator PIN Pad Modal State
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   const [pinTargetOperator, setPinTargetOperator] = useState<any | null>(null);
@@ -434,10 +438,26 @@ export function TabletProduction() {
     }
   };
 
+  const startCooldownTimer = (seconds = 3) => {
+    setCooldownSeconds(seconds);
+    const interval = setInterval(() => {
+      setCooldownSeconds(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
   const handleSubmit = async () => {
+    if (isSubmittingProduction || cooldownSeconds > 0) return;
     if (!selectedOfId) return toast.error('Veuillez sélectionner un OF.');
     if (selectedOperatorIds.length === 0) return toast.error('Veuillez ajouter au moins 1 ouvrier sur la machine.');
     if (axesQty === 0 && scrapQty === 0) return toast.error('Indiquez la quantité de pièces ou rebuts.');
+
+    setIsSubmittingProduction(true);
 
     const capacity = Math.max(1, cartonCapacity || 36);
     const numberOfFullCartons = Math.floor(axesQty / capacity);
@@ -480,6 +500,8 @@ export function TabletProduction() {
       setRollNumberInput('');
       setQcMetrage('');
       setQcPoids('');
+      setIsSubmittingProduction(false);
+      startCooldownTimer(3);
       return;
     }
 
@@ -490,7 +512,8 @@ export function TabletProduction() {
       setRollNumberInput('');
       setQcMetrage('');
       setQcPoids('');
-      toast.success(`Production Enregistrée (${totalCartons} cartons générés)`);
+      toast.success(`Production Enregistrée (${totalCartons} cartons générés) 🎉`);
+      startCooldownTimer(3);
     } catch (err: any) {
       console.error('Production save error:', err);
       const isNetworkError = !navigator.onLine || err?.message?.includes('fetch') || err?.message?.includes('network') || err?.message?.includes('Failed to fetch');
@@ -500,9 +523,12 @@ export function TabletProduction() {
         toast('Réseau instable : sauvegardé localement pour synchronisation', { icon: '📦' });
         setAxesQty(0);
         setScrapQty(0);
+        startCooldownTimer(3);
       } else {
         toast.error('Erreur enregistrement : ' + (err?.message || 'Erreur inconnue'));
       }
+    } finally {
+      setIsSubmittingProduction(false);
     }
   };
 
@@ -1062,14 +1088,28 @@ export function TabletProduction() {
                   </div>
                 </div>
 
-                {/* Validation & Submit Button */}
+                {/* Validation & Submit Button with Cooldown Protection */}
                 <button
                   onClick={handleSubmit}
-                  disabled={axesQty === 0 && scrapQty === 0}
-                  className="w-full py-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-40 text-white rounded-3xl font-black text-2xl uppercase tracking-wider shadow-xl shadow-blue-500/20 active:scale-98 transition-all flex items-center justify-center gap-3"
+                  disabled={isSubmittingProduction || cooldownSeconds > 0 || (axesQty === 0 && scrapQty === 0)}
+                  className="w-full py-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white rounded-3xl font-black text-xl sm:text-2xl uppercase tracking-wider shadow-xl shadow-blue-500/20 active:scale-98 transition-all flex items-center justify-center gap-3 disabled:cursor-not-allowed"
                 >
-                  <span className="material-symbols-outlined text-[32px]">inventory_2</span>
-                  <span>Valider & Générer Cartons ({Math.ceil(axesQty / Math.max(1, cartonCapacity))} ctn)</span>
+                  {isSubmittingProduction ? (
+                    <>
+                      <span className="material-symbols-outlined text-[32px] animate-spin">refresh</span>
+                      <span>Génération des Cartons en cours...</span>
+                    </>
+                  ) : cooldownSeconds > 0 ? (
+                    <>
+                      <span className="material-symbols-outlined text-[32px] text-emerald-300">check_circle</span>
+                      <span>Cartons Générés ! (Attente {cooldownSeconds}s)</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-[32px]">inventory_2</span>
+                      <span>Valider & Générer Cartons ({Math.ceil(axesQty / Math.max(1, cartonCapacity))} ctn)</span>
+                    </>
+                  )}
                 </button>
               </>
             )}
