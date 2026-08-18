@@ -2,7 +2,19 @@ import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import { Database } from '../types/supabase';
 
-type MachineStop = Database['public']['Tables']['machine_stops']['Row'];
+export interface MachineStop {
+  id: string;
+  organization_id?: string;
+  machine_id: string;
+  reason: string;
+  start_time: string;
+  end_time?: string | null;
+  operator_id?: string | null;
+  comments?: string | null;
+  status?: string | null;
+  created_at?: string;
+}
+
 const DEFAULT_ORG_ID = '00000000-0000-0000-0000-000000000000';
 const getActiveOrgId = () => typeof localStorage !== 'undefined' ? (localStorage.getItem('active_org_id') || DEFAULT_ORG_ID) : DEFAULT_ORG_ID;
 

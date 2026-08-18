@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useMesStore } from '../store/mesStore';
 import { useProductionStore } from '../store/production';
 import { useTenantStore } from '../store/tenantStore';
+import { useStopsStore } from '../store/stops';
 import { supabase } from '../lib/supabase';
 import { enqueueOfflineEvent, processOfflineSync, getOfflineQueue } from '../utils/offlineQueue';
 import toast from 'react-hot-toast';
@@ -12,6 +13,7 @@ export function TabletProduction() {
   const { orders, articles, raw_materials, addProductionEntry, fetchInitialData: fetchMesData, setupRealtime: setupMesRealtime } = useMesStore();
   const { machines, operators, sessions, startSession, updateSessionStatus, fetchInitialData: fetchProdData, updateMachine } = useProductionStore();
   const { currentOrg, fetchTenantData } = useTenantStore();
+  const { stops, fetchStops, declareStop, resolveStop } = useStopsStore();
   
   // Offline state
   const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
@@ -27,6 +29,12 @@ export function TabletProduction() {
   // Production counters (direct typing or quick carton increments)
   const [axesQty, setAxesQty] = useState<number>(0);
   const [scrapQty, setScrapQty] = useState<number>(0);
+
+  // Machine Breakdown / Panne State
+  const [isPanneModalOpen, setIsPanneModalOpen] = useState(false);
+  const [panneReason, setPanneReason] = useState('Panne Mécanique');
+  const [panneComment, setPanneComment] = useState('');
+  const [isSubmittingPanne, setIsSubmittingPanne] = useState(false);
 
   // Selected OF, Active Team (up to 4 operators), and Raw Material for this session
   const [selectedOfId, setSelectedOfId] = useState<string>('');
@@ -74,6 +82,7 @@ export function TabletProduction() {
     // Initial fetch
     fetchMesData();
     fetchProdData();
+    fetchStops();
     if (setupMesRealtime) setupMesRealtime();
     
     const savedMachineId = localStorage.getItem('tablet_machine_id');
@@ -97,6 +106,7 @@ export function TabletProduction() {
     const interval = setInterval(() => {
       fetchMesData();
       fetchProdData();
+      fetchStops();
     }, 2000);
 
     const handleOnline = () => {
@@ -111,6 +121,7 @@ export function TabletProduction() {
     const handleFocus = () => {
       fetchMesData();
       fetchProdData();
+      fetchStops();
       setPendingSyncCount(getOfflineQueue().length);
     };
     window.addEventListener('focus', handleFocus);
@@ -124,7 +135,7 @@ export function TabletProduction() {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [fetchMesData, fetchProdData, setupMesRealtime]);
+  }, [fetchMesData, fetchProdData, fetchStops, setupMesRealtime]);
 
   const handleMachineSelect = (id: string) => {
     setSelectedMachineId(id);
@@ -340,6 +351,46 @@ export function TabletProduction() {
     }
   };
 
+  // Active Stop on current machine
+  const activeMachineStop = stops.find(s => s.machine_id === selectedMachineId && (!s.end_time || s.status === 'En cours'));
+
+  const handleDeclarePanne = async () => {
+    if (!selectedMachineId) {
+      toast.error('Aucune machine sélectionnée.');
+      return;
+    }
+    setIsSubmittingPanne(true);
+    try {
+      await declareStop({
+        machine_id: selectedMachineId,
+        operator_id: selectedOperatorIds[0] || null,
+        reason: panneReason,
+        comments: panneComment.trim() || undefined,
+        status: 'En cours'
+      });
+      toast.success(`Arrêt / Panne (${panneReason}) déclaré ! Équipe de maintenance alertée.`);
+      setIsPanneModalOpen(false);
+      setPanneComment('');
+      fetchProdData();
+      fetchStops();
+    } catch (err: any) {
+      toast.error('Erreur déclaration panne : ' + err.message);
+    } finally {
+      setIsSubmittingPanne(false);
+    }
+  };
+
+  const handleResolvePanne = async (stopId: string) => {
+    try {
+      await resolveStop(stopId);
+      toast.success('Panne résolue ! Machine remise en service.');
+      fetchProdData();
+      fetchStops();
+    } catch (err: any) {
+      toast.error('Erreur reprise : ' + err.message);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!selectedOfId) return toast.error('Veuillez sélectionner un OF.');
     if (selectedOperatorIds.length === 0) return toast.error('Veuillez ajouter au moins 1 ouvrier sur la machine.');
@@ -493,7 +544,7 @@ export function TabletProduction() {
           </div>
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap justify-center">
           {pendingSyncCount > 0 && (
             <button
               onClick={async () => {
@@ -506,6 +557,17 @@ export function TabletProduction() {
               Sync ({pendingSyncCount})
             </button>
           )}
+
+          {/* 🚨 Declare Panne / Arrêt Button */}
+          <button
+            type="button"
+            onClick={() => setIsPanneModalOpen(true)}
+            className="px-5 py-3 sm:px-6 sm:py-3.5 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white rounded-2xl font-black text-sm sm:text-base transition-all flex items-center gap-2 shadow-lg shadow-rose-600/20 active:scale-95"
+          >
+            <span className="material-symbols-outlined text-xl sm:text-2xl animate-pulse">warning</span>
+            <span>Déclarer Panne</span>
+          </button>
+
           {isConnected && (
             <button 
               onClick={handleDisconnect}
@@ -517,6 +579,40 @@ export function TabletProduction() {
           )}
         </div>
       </div>
+
+      {/* ⚠️ LIVE BREAKDOWN / PANNE ALERT BANNER */}
+      {activeMachineStop && (
+        <div className="bg-gradient-to-r from-rose-950 via-red-900 to-rose-900 border-2 border-rose-500 rounded-3xl p-4 sm:p-6 text-white shadow-2xl flex flex-col md:flex-row items-center justify-between gap-4 animate-pulse">
+          <div className="flex items-center gap-4 text-center md:text-left">
+            <div className="w-14 h-14 rounded-2xl bg-rose-600/30 flex items-center justify-center text-amber-300 shrink-0 border border-rose-400/40">
+              <span className="material-symbols-outlined text-[36px]">car_crash</span>
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap justify-center md:justify-start">
+                <span className="bg-rose-500 text-white text-xs font-black uppercase px-3 py-1 rounded-full shadow-sm">
+                  MACHINE EN PANNE
+                </span>
+                <span className="text-xs text-rose-200 font-mono">
+                  Déclarée à {new Date(activeMachineStop.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black text-white mt-1">
+                {activeMachineStop.reason} {activeMachineStop.comments ? `— "${activeMachineStop.comments}"` : ''}
+              </h2>
+              <p className="text-xs text-rose-300 font-medium">L'équipe de maintenance et la supervision ont été notifiées.</p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => handleResolvePanne(activeMachineStop.id)}
+            className="w-full md:w-auto px-8 py-4 bg-emerald-500 hover:bg-emerald-400 text-white font-black text-base rounded-2xl shadow-xl shadow-emerald-500/30 transition-transform active:scale-95 flex items-center justify-center gap-2 shrink-0"
+          >
+            <span className="material-symbols-outlined text-[24px]">check_circle</span>
+            <span>Panne Résolue / Reprendre</span>
+          </button>
+        </div>
+      )}
 
       {/* Main Content */}
       {!isConnected ? (
@@ -1071,6 +1167,86 @@ export function TabletProduction() {
 
               </div>
             )}
+
+          </div>
+        </div>
+      )}
+
+      {/* 🚨 TOUCH-FRIENDLY PANNE / BREAKDOWN MODAL */}
+      {isPanneModalOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-rose-500/40 rounded-3xl p-6 sm:p-8 w-full max-w-lg shadow-2xl space-y-6 text-white text-center">
+            
+            <div className="w-14 h-14 bg-rose-500/20 text-rose-400 rounded-2xl flex items-center justify-center mx-auto border border-rose-500/30">
+              <span className="material-symbols-outlined text-[36px]">car_crash</span>
+            </div>
+            
+            <div>
+              <h2 className="text-2xl font-black">Déclaration d'Arrêt / Panne Machine</h2>
+              <p className="text-xs text-slate-400 mt-1">
+                Sélectionnez le motif pour alerter l'équipe de maintenance ({currentMachine?.name}).
+              </p>
+            </div>
+
+            {/* Quick Reason Buttons */}
+            <div className="grid grid-cols-2 gap-3 text-left">
+              {[
+                { reason: 'Panne Mécanique', icon: 'settings' },
+                { reason: 'Panne Électrique', icon: 'electric_bolt' },
+                { reason: 'Rupture Matière', icon: 'inventory_2' },
+                { reason: 'Changement Série', icon: 'sync' },
+                { reason: 'Nettoyage & Graissage', icon: 'cleaning_services' },
+                { reason: 'Autre Arrêt Imprévu', icon: 'help' }
+              ].map((item) => (
+                <button
+                  key={item.reason}
+                  type="button"
+                  onClick={() => setPanneReason(item.reason)}
+                  className={`p-3.5 rounded-2xl border transition-all flex items-center gap-3 ${
+                    panneReason === item.reason
+                      ? 'bg-rose-600/30 border-rose-500 text-white shadow-lg ring-1 ring-rose-500'
+                      : 'bg-slate-800/80 border-slate-700/80 text-slate-300 hover:bg-slate-800 hover:border-slate-600'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[24px] text-rose-400">{item.icon}</span>
+                  <span className="text-xs font-bold">{item.reason}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Comment Area */}
+            <div>
+              <label className="block text-left text-xs font-bold text-slate-400 uppercase mb-1.5">
+                Commentaire / Précision (Optionnel)
+              </label>
+              <textarea
+                rows={2}
+                value={panneComment}
+                onChange={(e) => setPanneComment(e.target.value)}
+                placeholder="Ex: Bruit anormal au niveau du rouleau presseur droit..."
+                className="w-full p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs font-medium text-white placeholder:text-slate-600 focus:outline-none focus:border-rose-500 transition-all"
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsPanneModalOpen(false)}
+                className="w-1/3 py-3.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                disabled={isSubmittingPanne}
+                onClick={handleDeclarePanne}
+                className="w-2/3 py-3.5 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white font-black text-sm rounded-xl shadow-lg shadow-rose-600/30 transition-all flex items-center justify-center gap-2 active:scale-95"
+              >
+                <span className="material-symbols-outlined text-[18px]">send</span>
+                <span>{isSubmittingPanne ? 'Envoi...' : 'Déclarer & Alerter'}</span>
+              </button>
+            </div>
 
           </div>
         </div>
