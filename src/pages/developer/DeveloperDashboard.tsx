@@ -729,12 +729,16 @@ export function DeveloperDashboard() {
                     <div>
                       <div className="flex items-start justify-between gap-3 mb-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-11 h-11 rounded-2xl bg-cyan-950 border border-cyan-800/80 flex items-center justify-center text-cyan-400 font-black text-sm shadow-md">
+                          <div 
+                            onClick={() => navigate(`/developer/factory/${f.id}`)}
+                            className="w-11 h-11 rounded-2xl bg-cyan-950 border border-cyan-800/80 flex items-center justify-center text-cyan-400 font-black text-sm shadow-md cursor-pointer hover:bg-cyan-900 transition-colors"
+                          >
                             {f.name.substring(0, 2).toUpperCase()}
                           </div>
-                          <div>
-                            <h3 className="text-base font-black text-white group-hover:text-cyan-400 transition-colors tracking-tight">
-                              {f.name}
+                          <div className="cursor-pointer" onClick={() => navigate(`/developer/factory/${f.id}`)}>
+                            <h3 className="text-base font-black text-white group-hover:text-cyan-400 transition-colors tracking-tight flex items-center gap-1.5">
+                              <span>{f.name}</span>
+                              <span className="material-symbols-outlined text-[14px] opacity-0 group-hover:opacity-100 text-cyan-400 transition-opacity">open_in_new</span>
                             </h3>
                             <p className="text-xs text-slate-400 font-medium">{f.city || f.governorate || 'Tunisie'} • {f.industry || 'Industrie'}</p>
                           </div>
@@ -794,11 +798,11 @@ export function DeveloperDashboard() {
                         </button>
 
                         <button
-                          onClick={() => setDetailedFactory(f)}
-                          className="w-full py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+                          onClick={() => navigate(`/developer/factory/${f.id}`)}
+                          className="w-full py-2 px-3 bg-slate-800 hover:bg-slate-700 text-cyan-300 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5 border border-cyan-500/20"
                         >
                           <span className="material-symbols-outlined text-[16px]">visibility</span>
-                          <span>Détails</span>
+                          <span>Détails & Données</span>
                         </button>
                       </div>
 

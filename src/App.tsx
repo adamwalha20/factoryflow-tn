@@ -45,6 +45,7 @@ const SubscriptionSettings = lazy(() => import('./pages/settings/SubscriptionSet
 const TenantUsers = lazy(() => import('./pages/settings/TenantUsers').then(m => ({ default: m.TenantUsers })));
 const SaasPlatformDashboard = lazy(() => import('./pages/admin/SaasPlatformDashboard').then(m => ({ default: m.SaasPlatformDashboard })));
 const DeveloperDashboard = lazy(() => import('./pages/developer/DeveloperDashboard').then(m => ({ default: m.DeveloperDashboard })));
+const FactoryDetailControl = lazy(() => import('./pages/developer/FactoryDetailControl').then(m => ({ default: m.FactoryDetailControl })));
 
 // Application Pages - Resilient Lazy Exports
 const Arrets = lazy(() => import('./pages/Arrets'));
@@ -90,7 +91,9 @@ function AppContent() {
 
         {/* Developer & Platform Mission Control */}
         <Route path="/developer" element={<DeveloperDashboard />} />
+        <Route path="/developer/factory/:factoryId" element={<FactoryDetailControl />} />
         <Route path="/dev" element={<DeveloperDashboard />} />
+        <Route path="/dev/factory/:factoryId" element={<FactoryDetailControl />} />
 
         {/* Customer Portal */}
         <Route path="/portal" element={<CustomerPortal />} />
