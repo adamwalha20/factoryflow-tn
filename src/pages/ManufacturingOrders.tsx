@@ -304,7 +304,15 @@ export function ManufacturingOrders() {
                   return (
                     <tr key={order.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors text-sm group">
                       <td className="p-4 font-bold text-gray-900">{order.of_number}</td>
-                      <td className="p-4 font-medium text-gray-500">{order.po_number || '-'}</td>
+                      <td className="p-4 font-medium text-gray-500">
+                        {order.bc_number ? (
+                          <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded font-mono text-xs font-bold">
+                            {order.bc_number}
+                          </span>
+                        ) : order.po_number ? (
+                          order.po_number
+                        ) : '-'}
+                      </td>
                       <td className="p-4 font-semibold text-gray-700">{order.customer}</td>
                       <td className="p-4 text-gray-600">{article?.reference || 'N/A'}</td>
                       <td className="p-4">

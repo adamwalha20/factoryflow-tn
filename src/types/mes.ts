@@ -8,10 +8,28 @@ export interface Employee {
   created_at: string;
 }
 
+export interface BonDeCommandeItem {
+  id?: string;
+  article_reference: string;
+  article_designation: string;
+  quantity: number;
+  unit?: string;
+  colisage?: number;
+  mandrin_type?: string;
+  carton_type?: string;
+  epaisseur?: string;
+  of_id?: string;
+  of_number?: string;
+}
+
 export interface BonDeCommande {
   id: string;
+  organization_id?: string;
   bc_number: string;
   customer: string;
+  reference_client?: string | null;
+  attention?: string | null;
+  depot?: string | null;
   due_date: string | null;
   status: 'En attente' | 'En cours' | 'Terminé';
   mandrin_type?: string | null;
@@ -20,6 +38,7 @@ export interface BonDeCommande {
   quantity?: number | null;
   article_reference?: string | null;
   article_designation?: string | null;
+  items?: BonDeCommandeItem[];
   created_at: string;
 }
 
@@ -39,6 +58,8 @@ export interface Article {
 export interface ManufacturingOrder {
   id: string;
   po_number?: string | null;
+  bc_id?: string | null;
+  bc_number?: string | null;
   of_number: string;
   customer: string;
   article_id: string;
@@ -101,31 +122,11 @@ export interface RawMaterial {
   created_at: string;
 }
 
-export interface MaterialConsumption {
-  id: string;
-  production_entry_id: string;
-  raw_material_id: string;
-  consumed_quantity: number;
-  remaining_quantity: number;
-  yield_percentage: number;
-  waste_percentage: number;
-  created_at: string;
-}
-
 export interface MachineEvent {
   id: string;
   machine_id: string;
-  status: 'Running' | 'Stopped' | 'Maintenance';
-  event_time: string;
-  operator_id: string;
-}
-
-export interface WarehouseMovement {
-  id: string;
-  carton_id: string;
-  from_location: string | null;
-  to_location: string | null;
-  movement_type: 'Inbound' | 'Outbound' | 'Transfer';
-  operator_id: string;
+  event_type: 'START' | 'STOP' | 'MAINTENANCE' | 'ALERT';
+  duration_minutes: number | null;
+  reason: string | null;
   created_at: string;
 }

@@ -39,6 +39,7 @@ interface MesStore {
   addBonDeCommande: (data: Partial<BonDeCommande>) => Promise<void>;
   updateBonDeCommande: (id: string, data: Partial<BonDeCommande>) => Promise<void>;
   deleteBonDeCommande: (id: string) => Promise<void>;
+  generateOfsFromBc: (bcId: string) => Promise<any[]>;
   
   // Production Entries & Cartons
   addProductionEntry: (data: Partial<ProductionEntry>, generateCarton: boolean) => Promise<any>;
@@ -334,6 +335,113 @@ export const useMesStore = create<MesStore>((set, get) => ({
       set(state => ({
         bons_de_commande: state.bons_de_commande.filter(bc => bc.id !== id)
       }));
+    } catch (err: any) {
+      set({ error: err.message });
+      throw err;
+    }
+  },
+
+  generateOfsFromBc: async (bcId: string) => {
+    try {
+      const orgId = getActiveOrgId();
+      const bc = get().bons_de_commande.find(b => b.id === bcId);
+      if (!bc) throw new Error('Bon de commande non trouvé');
+
+      const items = (bc.items && bc.items.length > 0) 
+        ? bc.items 
+        : [{
+            article_reference: bc.article_reference || '',
+            article_designation: bc.article_designation || '',
+            quantity: bc.quantity || 0,
+            unit: 'RLX',
+            colisage: 36,
+            mandrin_type: bc.mandrin_type || '',
+            carton_type: bc.carton_type || '',
+            epaisseur: bc.epaisseur || ''
+          }];
+
+      const createdOrders: any[] = [];
+      const updatedItems = [...items];
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (!item.article_reference && !item.article_designation) continue;
+
+        // Skip if OF already created
+        if (item.of_id) continue;
+
+        // Match or create article
+        let article = get().articles.find(a => 
+          (item.article_reference && a.reference?.toLowerCase() === item.article_reference.toLowerCase()) ||
+          (item.article_designation && a.designation?.toLowerCase() === item.article_designation.toLowerCase())
+        );
+
+        if (!article && item.article_reference) {
+          const { data: newArt } = await (supabase as any)
+            .from('articles')
+            .insert([{
+              organization_id: orgId,
+              reference: item.article_reference,
+              designation: item.article_designation || item.article_reference,
+              category: 'Adhesive Tape',
+              unit: item.unit || 'RLX'
+            }])
+            .select()
+            .single();
+          if (newArt) {
+            article = newArt;
+            set(state => ({ articles: [newArt, ...state.articles] }));
+          }
+        }
+
+        if (!article) continue;
+
+        const ofNumber = items.length > 1 
+          ? `OF-${bc.bc_number}-${i + 1}` 
+          : `OF-${bc.bc_number}`;
+
+        const ofPayload = {
+          organization_id: orgId,
+          of_number: ofNumber,
+          customer: bc.customer,
+          article_id: article.id,
+          quantity_planned: item.quantity || bc.quantity || 0,
+          priority: 'Moyenne',
+          status: 'Planned',
+          due_date: bc.due_date,
+          bc_id: bc.id,
+          bc_number: bc.bc_number,
+          colisage: `${item.colisage || 36}`,
+          mandrin_type: item.mandrin_type || bc.mandrin_type || null,
+          carton_model: item.carton_type || bc.carton_type || null,
+          observation: `Généré depuis BC ${bc.bc_number} | Réf: ${item.article_reference} (${item.quantity} ${item.unit || 'RLX'})`
+        };
+
+        const { data: newOf, error: ofErr } = await (supabase as any)
+          .from('manufacturing_orders')
+          .insert([ofPayload])
+          .select()
+          .single();
+
+        if (!ofErr && newOf) {
+          createdOrders.push(newOf);
+          updatedItems[i] = {
+            ...item,
+            of_id: newOf.id,
+            of_number: newOf.of_number
+          };
+        }
+      }
+
+      // Update BC with linked OF references in items
+      await (supabase as any)
+        .from('bons_de_commande')
+        .update({ items: updatedItems, status: 'En cours' })
+        .eq('id', bcId);
+
+      // Refresh store state
+      await get().fetchInitialData();
+      return createdOrders;
     } catch (err: any) {
       set({ error: err.message });
       throw err;

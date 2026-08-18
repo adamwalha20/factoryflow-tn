@@ -1,341 +1,875 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useMesStore } from '../store/mesStore';
+import { useTenantStore } from '../store/tenantStore';
 import { useLanguageStore } from '../store/language';
+import { BonDeCommande, BonDeCommandeItem } from '../types/mes';
 import toast from 'react-hot-toast';
 
-export function BonsDeCommande() {
-  const { bons_de_commande, articles, loading, error, fetchInitialData, addBonDeCommande, updateBonDeCommande, deleteBonDeCommande } = useMesStore();
-  const { t } = useLanguageStore();
+interface BcFormItem {
+  article_reference: string;
+  article_designation: string;
+  quantity: string;
+  unit: string;
+  colisage: string;
+  of_id?: string;
+  of_number?: string;
+}
 
-  const initialFormState = {
-    bc_number: '',
-    customer: '',
-    due_date: '',
-    status: 'En attente',
-    mandrin_type: '',
-    carton_type: '',
-    epaisseur: '',
-    quantity: '',
-    article_reference: '',
-    article_designation: ''
-  };
+export function BonsDeCommande() {
+  const navigate = useNavigate();
+  const { 
+    bons_de_commande, 
+    articles, 
+    orders,
+    loading, 
+    error, 
+    fetchInitialData, 
+    addBonDeCommande, 
+    updateBonDeCommande, 
+    deleteBonDeCommande,
+    generateOfsFromBc
+  } = useMesStore();
+  const { currentOrg } = useTenantStore();
+  const { t } = useLanguageStore();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBcId, setEditingBcId] = useState<string | null>(null);
-  const [formData, setFormData] = useState(initialFormState);
   const [deletingBcId, setDeletingBcId] = useState<string | null>(null);
-  const [articleSearch, setArticleSearch] = useState('');
-  const [showArticleDropdown, setShowArticleDropdown] = useState(false);
+  const [printBc, setPrintBc] = useState<BonDeCommande | null>(null);
+  const [isGeneratingOf, setIsGeneratingOf] = useState<string | null>(null);
 
-  const filteredSearchArticles = articles
-    .filter(a => {
-      const q = articleSearch.toLowerCase();
-      return (a.reference?.toLowerCase().includes(q) || a.designation?.toLowerCase().includes(q));
-    })
-    .slice(0, 50);
+  // Form State
+  const [bcNumber, setBcNumber] = useState('');
+  const [customer, setCustomer] = useState('');
+  const [referenceClient, setReferenceClient] = useState('');
+  const [attention, setAttention] = useState('');
+  const [depot, setDepot] = useState('DEPOT SFAX');
+  const [dueDate, setDueDate] = useState('');
+  const [status, setStatus] = useState<'En attente' | 'En cours' | 'Terminé'>('En attente');
+  const [mandrinType, setMandrinType] = useState('Standart Tunisie Tape');
+  const [cartonType, setCartonType] = useState('Standart Tunisie Tape (Date/Code Opérateur/Quantité)');
+  const [epaisseur, setEpaisseur] = useState('40Mu');
+
+  // Multi-line items array
+  const [items, setItems] = useState<BcFormItem[]>([
+    { article_reference: '', article_designation: '', quantity: '1000', unit: 'RLX', colisage: '36' }
+  ]);
+
+  // Autocomplete state per item index
+  const [activeItemIndex, setActiveItemIndex] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   useEffect(() => {
     fetchInitialData();
   }, [fetchInitialData]);
 
-  if (loading && bons_de_commande.length === 0) {
-    return <div className="p-6">Chargement des Bons de Commande...</div>;
-  }
-
-  if (error) {
-    return <div className="p-6 text-error">Erreur: {error}</div>;
-  }
-
-  const handleDeleteConfirm = async () => {
-    if (deletingBcId) {
-      try {
-        await deleteBonDeCommande(deletingBcId);
-        toast.success('Bon de commande supprimé !');
-      } catch (err: any) {
-        toast.error('Erreur lors de la suppression');
-      } finally {
-        setDeletingBcId(null);
-      }
-    }
+  const handleAddItemRow = () => {
+    setItems(prev => [
+      ...prev,
+      { article_reference: '', article_designation: '', quantity: '1000', unit: 'RLX', colisage: '36' }
+    ]);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const payload = {
-        bc_number: formData.bc_number,
-        customer: formData.customer,
-        due_date: formData.due_date || null,
-        status: formData.status,
-        mandrin_type: formData.mandrin_type || null,
-        carton_type: formData.carton_type || null,
-        epaisseur: formData.epaisseur || null,
-        quantity: formData.quantity ? parseInt(formData.quantity) : null,
-        article_reference: formData.article_reference || null,
-        article_designation: formData.article_designation || null
-      };
+  const handleRemoveItemRow = (index: number) => {
+    if (items.length <= 1) {
+      toast.error('Un Bon de Commande doit comporter au moins 1 article.');
+      return;
+    }
+    setItems(prev => prev.filter((_, i) => i !== index));
+  };
 
+  const handleItemChange = (index: number, field: keyof BcFormItem, value: string) => {
+    setItems(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  const handleSelectArticle = (index: number, article: any) => {
+    setItems(prev => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        article_reference: article.reference,
+        article_designation: article.designation || article.name || article.reference,
+        unit: article.unit || 'RLX',
+        colisage: article.pieces_per_carton ? String(article.pieces_per_carton) : '36'
+      };
+      return updated;
+    });
+    setActiveItemIndex(null);
+    setSearchQuery('');
+  };
+
+  const handleOpenAddModal = () => {
+    setEditingBcId(null);
+    setBcNumber(`BC-${new Date().getFullYear().toString().slice(-2)}S${Math.floor(1000 + Math.random() * 9000)}`);
+    setCustomer('');
+    setReferenceClient('BC ALIM.STOCK');
+    setAttention('MR AMJAD');
+    setDepot('DEPOT SFAX');
+    setDueDate(new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10));
+    setStatus('En attente');
+    setMandrinType('Standart Tunisie Tape');
+    setCartonType('Standart Tunisie Tape (Date/Code Opérateur/Quantité)');
+    setEpaisseur('40Mu');
+    setItems([
+      { article_reference: '', article_designation: '', quantity: '15120', unit: 'RLX', colisage: '36' }
+    ]);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEditModal = (bc: BonDeCommande) => {
+    setEditingBcId(bc.id);
+    setBcNumber(bc.bc_number);
+    setCustomer(bc.customer);
+    setReferenceClient(bc.reference_client || '');
+    setAttention(bc.attention || '');
+    setDepot(bc.depot || 'DEPOT SFAX');
+    setDueDate(bc.due_date ? bc.due_date.slice(0, 10) : '');
+    setStatus(bc.status as any || 'En attente');
+    setMandrinType(bc.mandrin_type || 'Standart Tunisie Tape');
+    setCartonType(bc.carton_type || 'Standart Tunisie Tape');
+    setEpaisseur(bc.epaisseur || '40Mu');
+
+    if (bc.items && bc.items.length > 0) {
+      setItems(bc.items.map(it => ({
+        article_reference: it.article_reference || '',
+        article_designation: it.article_designation || '',
+        quantity: String(it.quantity || 0),
+        unit: it.unit || 'RLX',
+        colisage: String(it.colisage || 36),
+        of_id: it.of_id,
+        of_number: it.of_number
+      })));
+    } else {
+      setItems([{
+        article_reference: bc.article_reference || '',
+        article_designation: bc.article_designation || '',
+        quantity: String(bc.quantity || 1000),
+        unit: 'RLX',
+        colisage: '36'
+      }]);
+    }
+
+    setIsModalOpen(true);
+  };
+
+  const handleSubmitForm = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bcNumber.trim() || !customer.trim()) {
+      toast.error('Veuillez remplir le N° de BC et le nom du client.');
+      return;
+    }
+
+    const parsedItems: BonDeCommandeItem[] = items.map(it => ({
+      article_reference: it.article_reference.trim(),
+      article_designation: it.article_designation.trim(),
+      quantity: parseInt(it.quantity) || 0,
+      unit: it.unit || 'RLX',
+      colisage: parseInt(it.colisage) || 36,
+      mandrin_type: mandrinType,
+      carton_type: cartonType,
+      epaisseur: epaisseur,
+      of_id: it.of_id,
+      of_number: it.of_number
+    }));
+
+    const totalQty = parsedItems.reduce((sum, it) => sum + (it.quantity || 0), 0);
+    const firstItem = parsedItems[0];
+
+    const payload: Partial<BonDeCommande> = {
+      bc_number: bcNumber.trim(),
+      customer: customer.trim(),
+      reference_client: referenceClient.trim() || null,
+      attention: attention.trim() || null,
+      depot: depot.trim() || null,
+      due_date: dueDate || null,
+      status: status,
+      mandrin_type: mandrinType,
+      carton_type: cartonType,
+      epaisseur: epaisseur,
+      quantity: totalQty,
+      article_reference: firstItem?.article_reference || null,
+      article_designation: firstItem?.article_designation || null,
+      items: parsedItems
+    };
+
+    try {
       if (editingBcId) {
         await updateBonDeCommande(editingBcId, payload);
         toast.success('Bon de commande mis à jour !');
       } else {
         await addBonDeCommande(payload);
-        toast.success('Bon de commande créé !');
+        toast.success('Nouveau Bon de Commande multi-lignes créé avec succès !');
       }
       setIsModalOpen(false);
-      setEditingBcId(null);
-      setFormData(initialFormState);
     } catch (err: any) {
-      console.error(err);
-      toast.error('Erreur: ' + err.message);
+      toast.error('Erreur : ' + err.message);
     }
   };
 
-  const handleEditClick = (bc: any) => {
-    setEditingBcId(bc.id);
-    setFormData({
-      bc_number: bc.bc_number,
-      customer: bc.customer || '',
-      due_date: bc.due_date ? bc.due_date.split('T')[0] : '',
-      status: bc.status || 'En attente',
-      mandrin_type: bc.mandrin_type || '',
-      carton_type: bc.carton_type || '',
-      epaisseur: bc.epaisseur || '',
-      quantity: bc.quantity ? bc.quantity.toString() : '',
-      article_reference: bc.article_reference || '',
-      article_designation: bc.article_designation || ''
-    });
-    setArticleSearch(bc.article_reference || '');
-    setIsModalOpen(true);
+  const handleDeleteConfirm = async () => {
+    if (!deletingBcId) return;
+    try {
+      await deleteBonDeCommande(deletingBcId);
+      toast.success('Bon de commande supprimé.');
+      setDeletingBcId(null);
+    } catch (err: any) {
+      toast.error('Erreur suppression : ' + err.message);
+    }
   };
 
-  const handleAddClick = () => {
-    setEditingBcId(null);
-    setFormData(initialFormState);
-    setArticleSearch('');
-    setIsModalOpen(true);
+  const handleGenerateOfs = async (bcId: string) => {
+    setIsGeneratingOf(bcId);
+    try {
+      const created = await generateOfsFromBc(bcId);
+      toast.success(`${created.length} Ordre(s) de Fabrication généré(s) pour ce BC !`);
+    } catch (err: any) {
+      toast.error('Erreur génération OFs : ' + err.message);
+    } finally {
+      setIsGeneratingOf(null);
+    }
+  };
+
+  const getFilteredArticles = (query: string) => {
+    const q = (query || '').toLowerCase().trim();
+    if (!q) return articles.slice(0, 15);
+    return articles.filter(a => 
+      a.reference?.toLowerCase().includes(q) || 
+      a.designation?.toLowerCase().includes(q)
+    ).slice(0, 15);
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in zoom-in duration-300">
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{t.purchase_orders}</h1>
-          <p className="text-sm text-gray-500 font-medium mt-1">{t.overview}</p>
+    <div className="space-y-6 font-sans">
+      
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-3xl border border-gray-200 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center shadow-sm">
+            <span className="material-symbols-outlined text-[28px]">receipt_long</span>
+          </div>
+          <div>
+            <h1 className="text-2xl font-black text-gray-900 tracking-tight">Bons de Commande Internes (BC)</h1>
+            <p className="text-xs text-gray-500 font-medium mt-0.5">
+              Gestion des commandes clients multi-articles et génération automatique des Ordres de Fabrication (OF)
+            </p>
+          </div>
         </div>
+
         <button 
-          onClick={handleAddClick}
-          className="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-md font-medium text-sm transition-colors flex items-center gap-2 shadow-sm"
+          onClick={handleOpenAddModal}
+          className="px-5 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-2xl font-black text-xs uppercase tracking-wider transition-all shadow-md shadow-blue-500/20 flex items-center gap-2"
         >
-          <span className="material-symbols-outlined text-[18px]">add</span>
-          {t.add}
+          <span className="material-symbols-outlined text-[18px]">add_circle</span>
+          <span>Nouveau Bon de Commande</span>
         </button>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden card-shadow">
+      {/* Main BC Table */}
+      <div className="bg-white border border-gray-200 rounded-3xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-200 table-header-sticky">
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.purchase_orders}</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.client}</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.articles}</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.quantity}</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.date}</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.status}</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">{t.actions}</th>
+              <tr className="bg-gray-50/80 border-b border-gray-200 text-gray-500 font-bold uppercase tracking-wider">
+                <th className="p-4">N° Bon de Commande</th>
+                <th className="p-4">Client & Référence</th>
+                <th className="p-4">Articles & Lignes Commandées</th>
+                <th className="p-4 text-center">Quantité Totale</th>
+                <th className="p-4 text-center">Ordres de Fab (OF)</th>
+                <th className="p-4">Échéance</th>
+                <th className="p-4">Statut</th>
+                <th className="p-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-gray-100">
               {bons_de_commande.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-on-surface-variant">
-                    Aucun bon de commande trouvé.
+                  <td colSpan={8} className="p-12 text-center text-gray-400 font-medium">
+                    Aucun bon de commande enregistré. Cliquez sur "+ Nouveau Bon de Commande" pour commencer.
                   </td>
                 </tr>
               ) : (
-                bons_de_commande.map((bc) => (
-                  <tr key={bc.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors text-sm group">
-                    <td className="p-4 font-bold text-gray-900">{bc.bc_number}</td>
-                    <td className="p-4 font-semibold text-gray-700">{bc.customer}</td>
-                    <td className="p-4 text-gray-600">
-                      {bc.article_reference || bc.article_designation ? (
-                        <div className="flex flex-col">
-                          {bc.article_reference && <span className="font-semibold text-gray-900">{bc.article_reference}</span>}
-                          {bc.article_designation && <span className="text-xs text-gray-500">{bc.article_designation}</span>}
+                bons_de_commande.map((bc) => {
+                  const bcItems = (bc.items && bc.items.length > 0) ? bc.items : [
+                    {
+                      article_reference: bc.article_reference || 'Article',
+                      article_designation: bc.article_designation || '',
+                      quantity: bc.quantity || 0,
+                      unit: 'RLX'
+                    }
+                  ];
+
+                  const totalQty = bcItems.reduce((acc, it) => acc + (it.quantity || 0), 0);
+                  const linkedOfs = orders.filter(o => o.bc_id === bc.id || o.bc_number === bc.bc_number);
+
+                  return (
+                    <tr key={bc.id} className="hover:bg-blue-50/30 transition-colors group">
+                      <td className="p-4 font-mono font-black text-blue-900 text-sm">
+                        {bc.bc_number}
+                        {bc.depot && (
+                          <span className="block text-[10px] text-gray-500 font-sans font-normal mt-0.5">
+                            📍 {bc.depot}
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-4">
+                        <span className="font-bold text-gray-900 block">{bc.customer}</span>
+                        {bc.reference_client && (
+                          <span className="text-[11px] text-gray-500 block font-mono">
+                            Réf: {bc.reference_client}
+                          </span>
+                        )}
+                        {bc.attention && (
+                          <span className="text-[10px] text-indigo-600 font-semibold block">
+                            Attn: {bc.attention}
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-4">
+                        <div className="space-y-1 max-w-md">
+                          {bcItems.map((item, idx) => (
+                            <div key={idx} className="bg-gray-50 p-2 rounded-xl border border-gray-200/80 flex items-center justify-between gap-2">
+                              <div>
+                                <span className="font-mono font-bold text-gray-900">{item.article_reference}</span>
+                                {item.article_designation && (
+                                  <span className="text-[11px] text-gray-600 block truncate max-w-xs">{item.article_designation}</span>
+                                )}
+                              </div>
+                              <span className="font-mono font-black text-indigo-600 bg-white px-2 py-0.5 rounded-lg border border-gray-200 shrink-0">
+                                {item.quantity?.toLocaleString()} {item.unit || 'RLX'}
+                              </span>
+                            </div>
+                          ))}
                         </div>
-                      ) : '-'}
-                    </td>
-                    <td className="p-4 font-medium text-gray-900">{bc.quantity || '-'}</td>
-                    <td className="p-4 text-gray-600">{bc.due_date ? new Date(bc.due_date).toLocaleDateString() : '-'}</td>
-                    <td className="p-4">
-                      <span className={`px-2.5 py-1 text-xs font-semibold rounded-md ${
-                        bc.status === 'En attente' ? 'bg-gray-100 text-gray-700' :
-                        bc.status === 'En cours' ? 'bg-blue-50 text-blue-700' :
-                        'bg-green-50 text-green-700'
-                      }`}>
-                        {bc.status}
-                      </span>
-                    </td>
-                    <td className="p-4 text-right">
-                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => handleEditClick(bc)} className="p-1.5 text-gray-400 hover:text-gray-900 transition-colors rounded hover:bg-gray-100">
-                          <span className="material-symbols-outlined text-[18px]">edit</span>
-                        </button>
-                        <button onClick={() => setDeletingBcId(bc.id)} className="p-1.5 text-gray-400 hover:text-red-600 transition-colors rounded hover:bg-red-50">
-                          <span className="material-symbols-outlined text-[18px]">delete</span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td className="p-4 text-center font-mono font-black text-gray-900 text-sm">
+                        {totalQty.toLocaleString()}
+                      </td>
+                      <td className="p-4 text-center">
+                        {linkedOfs.length > 0 ? (
+                          <div className="flex flex-wrap justify-center gap-1">
+                            {linkedOfs.map(of => (
+                              <span
+                                key={of.id}
+                                onClick={() => navigate('/admin/ordres-fabrication')}
+                                className="px-2 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-[10px] font-mono font-bold cursor-pointer hover:bg-emerald-100"
+                                title="Voir cet OF"
+                              >
+                                {of.of_number}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleGenerateOfs(bc.id)}
+                            disabled={isGeneratingOf === bc.id}
+                            className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-[11px] font-bold transition-all shadow-xs flex items-center gap-1 mx-auto"
+                          >
+                            <span className="material-symbols-outlined text-[14px]">bolt</span>
+                            <span>{isGeneratingOf === bc.id ? 'Création...' : 'Générer OFs'}</span>
+                          </button>
+                        )}
+                      </td>
+                      <td className="p-4 font-mono text-gray-600">
+                        {bc.due_date ? new Date(bc.due_date).toLocaleDateString() : '-'}
+                      </td>
+                      <td className="p-4">
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
+                          bc.status === 'Terminé' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                          bc.status === 'En cours' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                          'bg-amber-50 text-amber-700 border border-amber-200'
+                        }`}>
+                          {bc.status}
+                        </span>
+                      </td>
+                      <td className="p-4 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* Print BC Button */}
+                          <button
+                            onClick={() => setPrintBc(bc)}
+                            title="Imprimer Bon de Commande Interne"
+                            className="p-2 text-slate-600 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 rounded-xl transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">print</span>
+                          </button>
+                          {/* Edit BC Button */}
+                          <button
+                            onClick={() => handleOpenEditModal(bc)}
+                            title="Modifier"
+                            className="p-2 text-slate-600 hover:text-gray-900 bg-slate-100 hover:bg-gray-200 rounded-xl transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">edit</span>
+                          </button>
+                          {/* Delete BC Button */}
+                          <button
+                            onClick={() => setDeletingBcId(bc.id)}
+                            title="Supprimer"
+                            className="p-2 text-rose-500 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-xl transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">delete</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
       </div>
 
+      {/* 📝 MULTI-LINE BON DE COMMANDE MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl p-0 w-full max-w-lg shadow-2xl border border-gray-200 max-h-[90vh] flex flex-col">
-            <div className="p-6 border-b border-gray-100 shrink-0">
-              <h2 className="text-2xl font-bold text-gray-900">{editingBcId ? "Modifier le Bon" : "Nouveau Bon de Commande"}</h2>
-            </div>
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-4xl shadow-2xl border border-gray-200 max-h-[92vh] flex flex-col overflow-hidden font-sans">
             
-            <form id="bcForm" onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 grow">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">N° Bon de Commande *</label>
-                  <input required type="text" placeholder="ex: BC-2026-001" value={formData.bc_number} onChange={e => setFormData({...formData, bc_number: e.target.value})} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-primary focus:border-primary" />
+            {/* Modal Header */}
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-slate-50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center">
+                  <span className="material-symbols-outlined">description</span>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Client *</label>
-                  <input required type="text" placeholder="ex: AFRICA TRADE" value={formData.customer} onChange={e => setFormData({...formData, customer: e.target.value})} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-primary focus:border-primary" />
+                  <h2 className="text-xl font-black text-gray-900">
+                    {editingBcId ? "Modifier le Bon de Commande" : "Nouveau Bon de Commande Interne"}
+                  </h2>
+                  <p className="text-xs text-gray-500">Saisie multi-articles avec génération individuelle des OFs</p>
                 </div>
               </div>
+              <button 
+                onClick={() => setIsModalOpen(false)}
+                className="w-9 h-9 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700 flex items-center justify-center"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="relative">
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Article (Référence)</label>
+            {/* Modal Form Content */}
+            <form id="bcMultiForm" onSubmit={handleSubmitForm} className="p-6 overflow-y-auto space-y-6 flex-1">
+              
+              {/* General Order Information */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-200/80">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase">N° Bon de Commande *</label>
+                  <input
+                    required
+                    type="text"
+                    placeholder="ex: PF26S0374"
+                    value={bcNumber}
+                    onChange={e => setBcNumber(e.target.value)}
+                    className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm font-bold font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase">Client *</label>
+                  <input
+                    required
+                    type="text"
+                    placeholder="ex: alim.stock"
+                    value={customer}
+                    onChange={e => setCustomer(e.target.value)}
+                    className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase">Référence Client</label>
                   <input
                     type="text"
-                    placeholder="Rechercher un article..."
-                    value={articleSearch}
-                    onFocus={() => setShowArticleDropdown(true)}
-                    onChange={e => {
-                      setArticleSearch(e.target.value);
-                      setShowArticleDropdown(true);
-                      if (formData.article_reference) {
-                        setFormData({...formData, article_reference: '', article_designation: ''});
-                      }
-                    }}
-                    onBlur={() => setTimeout(() => setShowArticleDropdown(false), 200)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-primary focus:border-primary"
+                    placeholder="ex: BC ALIM.STOCK"
+                    value={referenceClient}
+                    onChange={e => setReferenceClient(e.target.value)}
+                    className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white font-mono"
                   />
-                  {showArticleDropdown && (
-                    <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-md mt-1 max-h-60 overflow-y-auto shadow-xl">
-                      {filteredSearchArticles.map(article => (
-                        <li
-                          key={article.id}
-                          className="px-4 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0"
-                          onMouseDown={(e) => {
-                            e.preventDefault(); // Prevents blur event from firing before this
-                            setArticleSearch(article.reference);
-                            setFormData({
-                              ...formData,
-                              article_reference: article.reference,
-                              article_designation: article.designation || ''
-                            });
-                            setShowArticleDropdown(false);
-                          }}
-                        >
-                          <div className="font-bold text-gray-900 text-sm">{article.reference}</div>
-                          <div className="text-xs text-gray-500 truncate">{article.designation}</div>
-                        </li>
-                      ))}
-                      {filteredSearchArticles.length === 0 && (
-                        <li className="px-4 py-3 text-sm text-gray-500 text-center">Aucun article trouvé</li>
-                      )}
-                    </ul>
-                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase">À l'Attention de (Attention)</label>
+                  <input
+                    type="text"
+                    placeholder="ex: MR AMJAD"
+                    value={attention}
+                    onChange={e => setAttention(e.target.value)}
+                    className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Désignation Article</label>
-                  <input 
-                    type="text" 
-                    placeholder="ex: Etiquette 050/048" 
-                    value={formData.article_designation} 
-                    onChange={e => setFormData({...formData, article_designation: e.target.value})}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-primary focus:border-primary" 
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase">Dépôt / Destination</label>
+                  <input
+                    type="text"
+                    placeholder="ex: DEPOT SFAX"
+                    value={depot}
+                    onChange={e => setDepot(e.target.value)}
+                    className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase">Date de Livraison Souhaitée</label>
+                  <input
+                    type="date"
+                    value={dueDate}
+                    onChange={e => setDueDate(e.target.value)}
+                    className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white font-mono"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Type de Mandrin</label>
-                  <input type="text" placeholder="ex: blanc" value={formData.mandrin_type} onChange={e => setFormData({...formData, mandrin_type: e.target.value})} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-primary focus:border-primary" />
+              {/* 📦 MULTI-LINE ARTICLES SECTION */}
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                    <span className="material-symbols-outlined text-blue-600 text-[20px]">category</span>
+                    <span>Articles Commandés (Lignes OF) ({items.length})</span>
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={handleAddItemRow}
+                    className="px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-300 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">add</span>
+                    <span>+ Ajouter un Article sur ce BC</span>
+                  </button>
                 </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Type de Carton</label>
-                  <input type="text" placeholder="ex: modele n15" value={formData.carton_type} onChange={e => setFormData({...formData, carton_type: e.target.value})} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-primary focus:border-primary" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Taille/Épaisseur</label>
-                  <input type="text" placeholder="ex: 40Mu" value={formData.epaisseur} onChange={e => setFormData({...formData, epaisseur: e.target.value})} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-primary focus:border-primary" />
+
+                <div className="space-y-3">
+                  {items.map((item, index) => (
+                    <div 
+                      key={index}
+                      className="bg-white border-2 border-slate-200 hover:border-blue-300 rounded-2xl p-4 transition-all shadow-xs relative space-y-3"
+                    >
+                      <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+                        <span className="text-xs font-black text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-lg border border-blue-200">
+                          Article #{index + 1}
+                        </span>
+                        {items.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveItemRow(index)}
+                            className="text-xs font-bold text-rose-500 hover:text-rose-700 flex items-center gap-1 hover:bg-rose-50 px-2 py-1 rounded-lg"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">delete</span>
+                            <span>Supprimer</span>
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                        {/* Reference with Dropdown */}
+                        <div className="sm:col-span-4 relative">
+                          <label className="block text-[11px] font-bold text-gray-600 mb-1 uppercase">Référence Article *</label>
+                          <input
+                            required
+                            type="text"
+                            placeholder="Rechercher référence..."
+                            value={item.article_reference}
+                            onFocus={() => {
+                              setActiveItemIndex(index);
+                              setSearchQuery(item.article_reference);
+                            }}
+                            onChange={e => {
+                              handleItemChange(index, 'article_reference', e.target.value);
+                              setSearchQuery(e.target.value);
+                              setActiveItemIndex(index);
+                            }}
+                            className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm font-bold font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          />
+
+                          {/* Autocomplete Dropdown */}
+                          {activeItemIndex === index && (
+                            <div className="absolute top-full left-0 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-2xl z-30 max-h-48 overflow-y-auto">
+                              {getFilteredArticles(searchQuery).map(art => (
+                                <div
+                                  key={art.id}
+                                  onMouseDown={() => handleSelectArticle(index, art)}
+                                  className="p-2.5 hover:bg-blue-50 cursor-pointer border-b border-gray-50 last:border-0"
+                                >
+                                  <div className="font-bold text-gray-900 font-mono text-xs">{art.reference}</div>
+                                  <div className="text-[11px] text-gray-500 truncate">{art.designation || (art as any).name || art.reference}</div>
+                                </div>
+                              ))}
+                              {getFilteredArticles(searchQuery).length === 0 && (
+                                <div className="p-3 text-center text-xs text-gray-400">Aucun article trouvé</div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Designation */}
+                        <div className="sm:col-span-4">
+                          <label className="block text-[11px] font-bold text-gray-600 mb-1 uppercase">Désignation</label>
+                          <input
+                            type="text"
+                            placeholder="ex: ROULEAUX P.P TRANSPARENT"
+                            value={item.article_designation}
+                            onChange={e => handleItemChange(index, 'article_designation', e.target.value)}
+                            className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          />
+                        </div>
+
+                        {/* Quantity */}
+                        <div className="sm:col-span-2">
+                          <label className="block text-[11px] font-bold text-gray-600 mb-1 uppercase">Quantité *</label>
+                          <input
+                            required
+                            type="number"
+                            min="1"
+                            placeholder="15120"
+                            value={item.quantity}
+                            onChange={e => handleItemChange(index, 'quantity', e.target.value)}
+                            className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm font-bold font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          />
+                        </div>
+
+                        {/* Unit */}
+                        <div className="sm:col-span-1">
+                          <label className="block text-[11px] font-bold text-gray-600 mb-1 uppercase">Unité</label>
+                          <input
+                            type="text"
+                            placeholder="RLX"
+                            value={item.unit}
+                            onChange={e => handleItemChange(index, 'unit', e.target.value)}
+                            className="w-full border border-gray-300 rounded-xl px-2 py-2 text-sm text-center font-bold focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          />
+                        </div>
+
+                        {/* Colisage */}
+                        <div className="sm:col-span-1">
+                          <label className="block text-[11px] font-bold text-gray-600 mb-1 uppercase" title="Pièces par carton">Colisage</label>
+                          <input
+                            type="number"
+                            min="1"
+                            placeholder="36"
+                            value={item.colisage}
+                            onChange={e => handleItemChange(index, 'colisage', e.target.value)}
+                            className="w-full border border-gray-300 rounded-xl px-2 py-2 text-sm text-center font-bold font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              {/* Packaging Specifications & Notes */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Quantité (Total)</label>
-                  <input type="number" min="0" placeholder="ex: 10000" value={formData.quantity} onChange={e => setFormData({...formData, quantity: e.target.value})} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-primary focus:border-primary" />
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase">Type de Mandrin</label>
+                  <input
+                    type="text"
+                    placeholder="Standart Tunisie Tape"
+                    value={mandrinType}
+                    onChange={e => setMandrinType(e.target.value)}
+                    className="w-full border border-gray-300 rounded-xl px-3 py-2 text-xs bg-white"
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Date de livraison</label>
-                  <input type="date" value={formData.due_date} onChange={e => setFormData({...formData, due_date: e.target.value})} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-primary focus:border-primary" />
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase">Type de Carton</label>
+                  <input
+                    type="text"
+                    placeholder="Standart Tunisie Tape"
+                    value={cartonType}
+                    onChange={e => setCartonType(e.target.value)}
+                    className="w-full border border-gray-300 rounded-xl px-3 py-2 text-xs bg-white"
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Statut</label>
-                  <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-primary focus:border-primary">
-                    <option value="En attente">En attente</option>
-                    <option value="En cours">En cours</option>
-                    <option value="Terminé">Terminé</option>
-                  </select>
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase">Taille / Épaisseur</label>
+                  <input
+                    type="text"
+                    placeholder="ex: 40Mu"
+                    value={epaisseur}
+                    onChange={e => setEpaisseur(e.target.value)}
+                    className="w-full border border-gray-300 rounded-xl px-3 py-2 text-xs bg-white"
+                  />
                 </div>
               </div>
+
             </form>
 
-            <div className="p-6 border-t border-gray-100 shrink-0 flex justify-end gap-3 bg-gray-50 rounded-b-xl">
-              <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 text-gray-700 font-bold hover:bg-gray-200 rounded-lg transition-colors">
+            {/* Modal Footer */}
+            <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="px-5 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl text-xs font-bold transition-colors"
+              >
                 Annuler
               </button>
-              <button form="bcForm" type="submit" className="px-5 py-2.5 bg-primary text-white font-bold hover:bg-primary/90 rounded-lg transition-colors shadow-md flex items-center gap-2">
-                <span className="material-symbols-outlined text-[20px]">save</span>
-                {editingBcId ? 'Enregistrer' : 'Créer'}
+              <button
+                form="bcMultiForm"
+                type="submit"
+                className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-black shadow-md shadow-blue-500/20 transition-all flex items-center gap-2"
+              >
+                <span className="material-symbols-outlined text-[18px]">save</span>
+                <span>{editingBcId ? 'Enregistrer les Modifications' : 'Créer le Bon de Commande'}</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* 🖨️ OFFICIAL PRINT VIEW MODAL */}
+      {printBc && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl w-full max-w-3xl shadow-2xl p-8 space-y-6 text-slate-900 border border-gray-300 font-sans print:p-0 print:border-none print:shadow-none">
+            
+            {/* Top Print Actions */}
+            <div className="flex justify-between items-center pb-4 border-b border-gray-200 print:hidden">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-blue-600">print</span>
+                <h3 className="font-black text-lg">Aperçu Impression Bon de Commande Interne</h3>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => window.print()}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md"
+                >
+                  <span className="material-symbols-outlined text-[18px]">print</span>
+                  <span>Imprimer</span>
+                </button>
+                <button
+                  onClick={() => setPrintBc(null)}
+                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-bold text-xs"
+                >
+                  Fermer
+                </button>
+              </div>
+            </div>
+
+            {/* Official Printable Header Box */}
+            <div className="border-2 border-slate-900 rounded-2xl p-5 flex flex-col sm:flex-row justify-between items-start gap-4">
+              <div>
+                <h2 className="text-2xl font-black tracking-tight text-slate-900 font-serif uppercase">
+                  {currentOrg?.name || 'TUNISIE TAPE'}
+                </h2>
+                <p className="text-[11px] text-slate-600 mt-1 leading-tight">
+                  Zone Industrielle Poudrière 1 Sfax<br />
+                  Usine : Route Mahdia Km 11 Sfax<br />
+                  Dépôt Tunis : Av. Mustapha Mohsen Borj Louzir Ariana Tunis<br />
+                  Dépôt Msaken : Route Kairouan Rue Boujneh 4070 Msaken
+                </p>
+              </div>
+              <div className="text-right text-[11px] text-slate-600 leading-tight">
+                <p>Tél : 74 287 222 -- Fax : 74 287 016</p>
+                <p>Email : commercialsfax@tunisietape.com</p>
+                <p>commercialsfax1@tunisietape.com</p>
+              </div>
+            </div>
+
+            {/* Order & Attention Box */}
+            <div className="grid grid-cols-2 gap-4 items-center">
+              <div className="space-y-1 text-sm font-serif">
+                <p><strong>Date :</strong> {printBc.created_at ? new Date(printBc.created_at).toLocaleDateString() : new Date().toLocaleDateString()}</p>
+                <p><strong>Numéro :</strong> {printBc.bc_number}</p>
+                <p><strong>Référence :</strong> {printBc.reference_client || `BC ${printBc.customer.toUpperCase()}`}</p>
+              </div>
+
+              <div className="border-2 border-slate-900 rounded-2xl p-4 text-center">
+                <p className="text-xs font-bold text-slate-600 uppercase">Attention :</p>
+                <p className="text-lg font-black text-slate-900 font-serif uppercase mt-1">
+                  {printBc.attention || printBc.customer}
+                </p>
+              </div>
+            </div>
+
+            {/* Document Title */}
+            <div className="text-center pt-2">
+              <h1 className="text-2xl font-black uppercase tracking-wider font-serif underline decoration-2 underline-offset-4">
+                BON DE COMMANDE INTERNE
+              </h1>
+              {printBc.depot && (
+                <p className="text-sm font-black font-serif mt-1">Dépôt : {printBc.depot}</p>
+              )}
+            </div>
+
+            {/* Multi-Line Items Table */}
+            <div className="border-2 border-slate-900 rounded-xl overflow-hidden">
+              <table className="w-full text-left text-xs font-serif border-collapse">
+                <thead>
+                  <tr className="border-b-2 border-slate-900 bg-slate-100 text-slate-900 font-bold uppercase">
+                    <th className="p-3 border-r border-slate-900">Référence</th>
+                    <th className="p-3 border-r border-slate-900">Désignation</th>
+                    <th className="p-3 border-r border-slate-900 text-center">Quantité</th>
+                    <th className="p-3 border-r border-slate-900 text-center">Unité</th>
+                    <th className="p-3 text-center">Colisage</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y border-slate-900">
+                  {((printBc.items && printBc.items.length > 0) ? printBc.items : [
+                    {
+                      article_reference: printBc.article_reference || '',
+                      article_designation: printBc.article_designation || '',
+                      quantity: printBc.quantity || 0,
+                      unit: 'RLX',
+                      colisage: 36
+                    }
+                  ]).map((it, i) => (
+                    <tr key={i} className="hover:bg-slate-50">
+                      <td className="p-3 font-bold border-r border-slate-900 font-mono">{it.article_reference}</td>
+                      <td className="p-3 border-r border-slate-900 uppercase">{it.article_designation}</td>
+                      <td className="p-3 text-center font-bold border-r border-slate-900 font-mono text-sm">{it.quantity?.toLocaleString()}</td>
+                      <td className="p-3 text-center border-r border-slate-900">{it.unit || 'RLX'}</td>
+                      <td className="p-3 text-center font-mono">{it.colisage || 36}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Footer Packaging Specs & Signatures */}
+            <div className="border-2 border-slate-900 rounded-xl p-4 text-xs font-serif space-y-1">
+              <p><strong>Carton :</strong> {printBc.carton_type || 'Standart Tunisie Tape'}</p>
+              <p><strong>Mandrin :</strong> {printBc.mandrin_type || 'Standart Tunisie Tape'}</p>
+              {printBc.epaisseur && <p><strong>Taille / Épaisseur :</strong> {printBc.epaisseur}</p>}
+            </div>
+
+            <div className="grid grid-cols-2 gap-8 pt-4 text-center text-xs font-serif">
+              <div className="border-t border-slate-900 pt-2">
+                <p className="font-bold">Visa Responsable Commercial / Dépôt</p>
+              </div>
+              <div className="border-t border-slate-900 pt-2">
+                <p className="font-bold">Visa Responsable Production</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deletingBcId && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 w-full max-w-md shadow-2xl border border-gray-200 text-center space-y-4 font-sans">
+            <div className="w-14 h-14 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center mx-auto">
+              <span className="material-symbols-outlined text-[32px]">warning</span>
+            </div>
+            <h3 className="text-xl font-black text-gray-900">Supprimer le Bon de Commande ?</h3>
+            <p className="text-xs text-gray-500">
+              Cette action est irréversible. Les Ordres de Fabrication associés ne seront pas supprimés automatiquement.
+            </p>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setDeletingBcId(null)}
+                className="w-1/2 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl text-xs font-bold transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                className="w-1/2 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-black transition-colors shadow-md shadow-rose-600/20"
+              >
+                Supprimer
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {deletingBcId && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl p-6 w-full max-w-sm border border-gray-200 shadow-2xl">
-            <div className="flex items-center gap-3 text-red-600 mb-4">
-              <span className="material-symbols-outlined text-3xl">warning</span>
-              <h2 className="font-bold text-xl text-gray-900">Confirmer</h2>
-            </div>
-            <p className="text-gray-600 mb-6 font-medium">
-              Voulez-vous vraiment supprimer ce Bon de Commande ?
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button onClick={() => setDeletingBcId(null)} className="px-4 py-2 text-gray-700 font-bold hover:bg-gray-100 rounded-md transition-colors">Annuler</button>
-              <button onClick={handleDeleteConfirm} className="px-4 py-2 bg-red-600 text-white font-bold hover:bg-red-700 rounded-md transition-colors shadow-sm">Supprimer</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
