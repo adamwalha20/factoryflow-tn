@@ -312,8 +312,17 @@ export function BonsDeCommande() {
                     (bc.bc_number && o.observation && o.observation.includes(bc.bc_number))
                   );
 
-                  const isComplete = bc.status === 'Terminé' || (linkedOfs.length >= bcItems.length && bcItems.length > 0);
-                  const effectiveStatus = isComplete ? 'Terminé' : (linkedOfs.length > 0 ? 'En cours' : bc.status || 'En attente');
+                  // All OFs exist
+                  const allOfsGenerated = linkedOfs.length >= bcItems.length && bcItems.length > 0;
+                  
+                  // All OFs are actually finished in the workshop
+                  const allOfsFinished = linkedOfs.length > 0 && linkedOfs.every(o => 
+                    o.status === 'Completed' || o.status === 'Closed' || (o.quantity_planned || 0) <= 0
+                  );
+
+                  const effectiveStatus = (bc.status === 'Terminé' || (allOfsGenerated && allOfsFinished))
+                    ? 'Terminé'
+                    : (linkedOfs.length > 0 ? 'En cours' : (bc.status || 'En attente'));
 
                   return (
                     <tr key={bc.id} className="hover:bg-blue-50/30 transition-colors group">
@@ -362,19 +371,28 @@ export function BonsDeCommande() {
                         {linkedOfs.length > 0 ? (
                           <div className="flex flex-col items-center gap-1.5">
                             <div className="flex flex-wrap justify-center gap-1">
-                              {linkedOfs.map(of => (
-                                <span
-                                  key={of.id}
-                                  onClick={() => navigate('/admin/ordres-fabrication')}
-                                  className="px-2 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-[10px] font-mono font-bold cursor-pointer hover:bg-emerald-100 flex items-center gap-1"
-                                  title="Voir cet OF dans les Ordres de Fabrication"
-                                >
-                                  <span className="material-symbols-outlined text-[12px]">check_circle</span>
-                                  {of.of_number}
-                                </span>
-                              ))}
+                              {linkedOfs.map(of => {
+                                const isDone = of.status === 'Completed' || of.status === 'Closed';
+                                return (
+                                  <span
+                                    key={of.id}
+                                    onClick={() => navigate('/admin/ordres-fabrication')}
+                                    className={`px-2 py-1 rounded-lg text-[10px] font-mono font-bold cursor-pointer transition-colors flex items-center gap-1 border ${
+                                      isDone 
+                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                                        : 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100'
+                                    }`}
+                                    title={`Voir cet OF (${of.status})`}
+                                  >
+                                    <span className="material-symbols-outlined text-[12px]">
+                                      {isDone ? 'check_circle' : 'precision_manufacturing'}
+                                    </span>
+                                    {of.of_number}
+                                  </span>
+                                );
+                              })}
                             </div>
-                            {!isComplete && (
+                            {!allOfsGenerated && (
                               <button
                                 onClick={() => handleGenerateOfs(bc.id)}
                                 disabled={isGeneratingOf === bc.id}
@@ -405,7 +423,9 @@ export function BonsDeCommande() {
                           effectiveStatus === 'En cours' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
                           'bg-amber-50 text-amber-700 border border-amber-200'
                         }`}>
-                          {effectiveStatus === 'Terminé' && <span className="material-symbols-outlined text-[12px]">task_alt</span>}
+                          <span className="material-symbols-outlined text-[12px]">
+                            {effectiveStatus === 'Terminé' ? 'task_alt' : effectiveStatus === 'En cours' ? 'autorenew' : 'schedule'}
+                          </span>
                           {effectiveStatus}
                         </span>
                       </td>
